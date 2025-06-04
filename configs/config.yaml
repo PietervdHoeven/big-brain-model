@@ -1,0 +1,9 @@
+# configs/config.yaml
+
+defaults:
+  - stage: ae
+  - model: model
+  - loss: mse
+  - datamodule
+  - trainer
+
