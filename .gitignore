@@ -1,0 +1,5 @@
+repo_architecture.odt
+.~lock.*
+data/
+checkpoints
+.venv/
