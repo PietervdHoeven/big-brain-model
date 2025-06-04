@@ -1,0 +1,22 @@
+# Tell pip to look for CUDA-12.8 wheels here:
+--find-links https://download.pytorch.org/whl/cu128/torch_stable.html
+
+# PyTorch 2.7.0 with CUDA 12.8 support
+torch==2.7.0
+
+# TorchVision that matches Torch 2.7.0’s CUDA 12.8 build
+torchvision==0.22.0
+
+# TorchAudio that matches Torch 2.7.0’s CUDA 12.8 build
+torchaudio==2.7.0
+
+pytorch-lightning>=2.0
+hydra-core>=1.3
+omegaconf>=2.3
+numpy>=1.23
+pandas>=1.5
+#scikit-image>=0.19
+nibabel>=5.0
+#pytorch-msssim>=0.2
+#torchmetrics>=0.11
+#tensorboard>=2.12
