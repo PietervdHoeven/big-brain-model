@@ -7,3 +7,4 @@ batch_size: 4
 early_stopping:
   patience: 3              # epochs without improvement
   delta: 1e-6              # minimal drop to count as “improved”
+save_plots: true           # whether to save plots of training and validation loss 

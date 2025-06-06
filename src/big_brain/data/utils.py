@@ -65,11 +65,7 @@ def make_balanced_sampler(
     shell_cnt = Counter(dataset.bvals)  # N_b for each b-value
     # e.g. {0: 300, 500: 320, 1000: 4500, ...}
 
-    # 4) Build the “power‐law” shell weights
-    #    Smaller alpha -> less flattening; alpha=1 -> full flattening; alpha=0 -> no flatten.
-    w_shell = {b: 1.0 / (shell_cnt[b] ** alpha) for b in shell_cnt}
-
-    # 5) Build the final weights for each sample
+    # 4) Build the final weights for each sample
     weights = []
     for (p, s, b) in zip(dataset.patients, dataset.sessions, dataset.bvals):
         w  = 1.0 / S_counts[p]                  # patient factor
@@ -78,7 +74,7 @@ def make_balanced_sampler(
         w *= 10                                 # boost the weights to make them more pronounced
         weights.append(w)
 
-    # 6) Create the PyTorch sampler
+    # 5) Create the PyTorch sampler
     sampler = WeightedRandomSampler(
         weights=torch.DoubleTensor(weights),
         num_samples=len(weights),

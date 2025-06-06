@@ -51,7 +51,8 @@ def main(cfg: DictConfig) -> None:
     )
 
     # make checkpoint folder under Hydra run dir
-    best_ckpt = Path.cwd() / "ae_checkpoint.pth"
+    out_dir = Path(hydra.core.hydra_config.HydraConfig.get().runtime.output_dir)
+    best_ckpt = out_dir / "ae_checkpoint.pth"
 
     # 5.  Epoch loop
     history = {"epoch": [], "train_loss": [], "val_loss": []}
@@ -95,7 +96,7 @@ def main(cfg: DictConfig) -> None:
             break
 
     # 6.  Save history under Hydra run dir (JSON + CSV)
-    hist_path_json = Path.cwd() / "history.json"
+    hist_path_json = out_dir / "history.json"
     hist_path_csv  = hist_path_json.with_suffix(".csv")
 
     with hist_path_json.open("w") as fp:
@@ -103,6 +104,8 @@ def main(cfg: DictConfig) -> None:
 
     pd.DataFrame(history).to_csv(hist_path_csv, index=False)
     print(f"History saved to {hist_path_json} and {hist_path_csv}")
+
+    # 7.  
 
 
 if __name__ == "__main__":
