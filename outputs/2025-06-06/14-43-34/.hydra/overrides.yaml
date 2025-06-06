@@ -1,2 +1,0 @@
-- trainer.max_epochs=1
-- datamodule.batch_size=2

@@ -1,6 +1,0 @@
-model:
-  _target_: big_brain.models.auto_encoders.SlimAutoencoder
-  z_dim: 256
-loss:
-  _target_: torch.nn.MSELoss
-  reduction: mean
