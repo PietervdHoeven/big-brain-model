@@ -1,0 +1,9 @@
+# configs/trainer/autoencoder.yaml
+
+max_epochs: 100
+learning_rate: 1e-3
+optimizer: adam            
+batch_size: 4              
+early_stopping:
+  patience: 3              # epochs without improvement
+  delta: 1e-6              # minimal drop to count as “improved”

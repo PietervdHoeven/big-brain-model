@@ -1,8 +1,10 @@
 # configs/config.yaml
 
+seed: 42
+
 defaults:
-  - model: custom_ae
+  - model: autoencoder
   - loss: mse
-  - datamodule
-  - trainer
+  - datamodule: autoencoder
+  - trainer: autoencoder
 

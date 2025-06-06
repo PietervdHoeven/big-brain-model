@@ -5,8 +5,7 @@ from collections import defaultdict, Counter
 
 def create_val_test_split(
         dataset,
-        val_fraction: float = 0.1,
-        seed: int = 42
+        val_fraction: float = 0.1
 ):
     """
     Randomly split `dataset` into train / val subsets and
@@ -22,7 +21,7 @@ def create_val_test_split(
     n_val   = int(np.floor(val_fraction * n_total))
 
     # deterministic shuffle
-    rng      = np.random.default_rng(seed)
+    rng      = np.random.default_rng()
     all_idx  = np.arange(n_total)
     rng.shuffle(all_idx)
 

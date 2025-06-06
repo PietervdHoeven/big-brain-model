@@ -1,6 +1,6 @@
 import torch.nn as nn
-from models.encoders import SlimEncoder01
-from models.decoders import SlimDecoder01
+from big_brain.models.encoders import SlimEncoder01
+from big_brain.models.decoders import SlimDecoder01
 
 class SlimAutoencoder(nn.Module):
     def __init__(self, z_dim=256):

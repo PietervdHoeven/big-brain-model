@@ -1,5 +1,10 @@
 repo_architecture.odt
 .~lock.*
 data/
+!src/big_brain/data/
 checkpoints
 .venv/
+*.egg-info
+*.pyc
+__pycache__/
+.ipynb_checkpoints

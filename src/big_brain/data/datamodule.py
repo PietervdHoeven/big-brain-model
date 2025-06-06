@@ -27,8 +27,7 @@ class AEDataModule:
         num_workers: int = 4,               # number of workers for DataLoader (Determine for the slurm script)
         pin_memory: bool = True,            # pin_memory=True keep batch in (pinned) RAM so that when you do batch.to("cuda"), this usually speeds up transfers. If you’re only on CPU, it has no effect.
         use_weighted_sampler: bool = True,  # whether to use WeightedRandomSampler for training / validation / testing
-        alpha: float = 0.3,                 # exponent in make_balanced_sampler, alpha=0 means no upweighting of rare shells
-        seed: int = 42,                     # random seed for reproducibility (used in create_val_test_split) 
+        alpha: float = 0.3,                 # exponent in make_balanced_sampler, alpha=0 means no upweighting of rare shells 
     ):
         self.cache_root = cache_root
         self.batch_size = batch_size
@@ -38,7 +37,6 @@ class AEDataModule:
         self.pin_memory  = pin_memory
         self.use_weighted_sampler = use_weighted_sampler
         self.alpha = alpha
-        self.seed  = seed
 
         # will be filled by `setup()`
         self.train_dataset: Optional[Subset] = None
@@ -57,14 +55,12 @@ class AEDataModule:
         train_ds, valtest_ds = create_val_test_split(
             full_ds,
             val_fraction=self.val_split + self.test_split,
-            seed=self.seed,
         )
         val_ratio_inside = self.val_split / (self.val_split + self.test_split)
 
         val_ds, test_ds = create_val_test_split(
             valtest_ds,
             val_fraction=val_ratio_inside,
-            seed=self.seed,
         )
         return train_ds, val_ds, test_ds
 
