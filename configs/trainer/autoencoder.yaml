@@ -1,10 +1,18 @@
 # configs/trainer/autoencoder.yaml
 
-max_epochs: 100
+max_epochs: 200
 learning_rate: 1e-3
 optimizer: adam            
-batch_size: 4              
+batch_size: 4
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  mode: min
+  factor: 0.5
+  patience: 3
+  min_lr: 1e-6             
 early_stopping:
-  patience: 3              # epochs without improvement
-  delta: 1e-6              # minimal drop to count as “improved”
+  _target_: big_brain.training.stopping.EarlyStopper
+  mode: min
+  patience: 6              # epochs without improvement
+  delta: 1e-4              # minimal drop to count as “improved”
 save_plots: true           # whether to save plots of training and validation loss 
