@@ -6,12 +6,15 @@ import matplotlib.pyplot as plt
 from omegaconf import OmegaConf
 import hydra
 
+import logging
+log = logging.getLogger(__name__)
+
 def load_cfg(run_dir: Path):
-    cfg_path = run_dir / "hydra" / "config.yaml"
+    cfg_path = run_dir / "config.yaml"
     return OmegaConf.load(cfg_path)
 
 def sample_slices(vol: torch.Tensor):
-    """Return axial, coronal, sagittal mid-slices (H×W arrays)"""
+    """Return axial, coronal, sagittal mid-slices (HxW arrays)"""
     z, y, x = vol.shape[-3:]
     axial     = vol[..., z // 2, :, : ]
     coronal   = vol[..., :, y // 2, : ]
@@ -22,11 +25,11 @@ def main(run_dir: Path, n_show: int = 4):
     # 1) read cfg and re-instantiate datamodule + model
     cfg = load_cfg(run_dir)
     datamodule = hydra.utils.instantiate(cfg.datamodule)
-    datamodule.setup(stage="fit")                     # use val set
+    datamodule.setup()                     # use val set
     val_loader = datamodule.val_dataloader()
 
     model = hydra.utils.instantiate(cfg.model)
-    ckpt  = torch.load(run_dir / "checkpoints" / "best_ae.pth",
+    ckpt  = torch.load( Path('/home/spieterman/dev/big-brain-model/outputs/2025-06-06/15-55-38') / "checkpoint.pth",
                        map_location="cpu")
     model.load_state_dict(ckpt["model"])
     model.eval()
@@ -67,7 +70,7 @@ def main(run_dir: Path, n_show: int = 4):
     plt.tight_layout()
     out_png = run_dir / "recon_examples.png"
     fig.savefig(out_png, dpi=300)
-    print(f"Saved recon grid → {out_png}")
+    log.info(f"Saved recon grid -> {out_png}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

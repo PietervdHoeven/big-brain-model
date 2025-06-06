@@ -4,6 +4,9 @@ from pathlib import Path
 import pandas as pd
 import seaborn as sns
 
+import logging
+log = logging.getLogger(__name__)
+
 def main(run_dir: Path):
     # 1) load history
     hist_json = run_dir / "history.json"
@@ -27,7 +30,7 @@ def main(run_dir: Path):
     out_png = run_dir / "loss_curve.png"
     out_pdf = run_dir / "loss_curve.pdf"
     fig.savefig(out_png, dpi=300); fig.savefig(out_pdf)
-    print(f"Saved curves → {out_png}  &  {out_pdf}")
+    log.info(f"Saved curves -> {out_png}  &  {out_pdf}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
