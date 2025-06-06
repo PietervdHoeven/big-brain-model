@@ -1,4 +1,4 @@
-# src/big_brain_model/train.py
+# src/big_brain/train.py
 import hydra
 from omegaconf import DictConfig
 import pytorch_lightning as pl
@@ -15,7 +15,7 @@ def main(cfg: DictConfig):
     # trainer.fit(model, datamodule)
 
     print("✅  Configuration loaded successfully:")
-    print(cfg.pretty())
+    print(cfg)
 
 if __name__ == "__main__":
     main()
