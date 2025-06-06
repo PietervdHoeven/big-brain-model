@@ -13,7 +13,7 @@ def run_epoch(model, loader, criterion, optimiser=None, device='cuda'):
     model.train(mode=is_train)
     running_loss, n_batches = 0.0, 0
 
-    log.info("Mode:", "Train" if is_train else "Eval")
+    log.info("Mode: Train" if is_train else "Mode: Eval")
     log.debug(f"Patients: {len(set(loader.dataset.patients))}, Sessions: {len(set(loader.dataset.sessions))}")
 
     context = torch.enable_grad() if is_train else torch.no_grad()
