@@ -25,7 +25,6 @@ class ConvBlock3D(nn.Module):
             kernel_size=kernel_size,
             stride=stride,
             padding=padding,
-            bias=False,
         )
 
         norm_layer = {
@@ -48,7 +47,7 @@ class ConvBlock3D(nn.Module):
             "avg": nn.AvgPool3d,
             "none": nn.Identity,
         }[pool]
-        self.pool = pool_layer(kernel_size=2, stride=2, padding=0)
+        self.pool = pool_layer(kernel_size=2, stride=2, padding=0, ceil_mode=True)
 
     def forward(self, x):
         x = self.conv(x)
@@ -58,7 +57,7 @@ class ConvBlock3D(nn.Module):
         return self.pool(x)
 
 
-class DepthwiseConvBlock3D(nn.Module):
+class DepthConvBlock3D(nn.Module):
     """
     Depthwise-separable 3-D convolution:
       - depthwise conv (groups=in_ch)
@@ -70,7 +69,7 @@ class DepthwiseConvBlock3D(nn.Module):
         in_ch: int,
         out_ch: int,
         kernel_size: int = 3,
-        stride: int = 1,
+        stride: int = 2,
         padding: int = 1,
         norm: str = "batch",            # "batch" | "inst" | "group"
         activation: str = "relu",       # "relu"  | "gelu"
@@ -86,7 +85,6 @@ class DepthwiseConvBlock3D(nn.Module):
             stride,
             padding,
             groups=in_ch,
-            bias=False,
         )
         self.pointwise = nn.Conv3d(in_ch, out_ch, 1, bias=False)
 
@@ -110,7 +108,7 @@ class DepthwiseConvBlock3D(nn.Module):
             "avg": nn.AvgPool3d,
             None: nn.Identity,
         }[pool]
-        self.pool = pool_layer(kernel_size=2, stride=2, padding=0)
+        self.pool = pool_layer(kernel_size=2, stride=2, padding=0, ceil_mode=True)
 
     def forward(self, x):
         x = self.depthwise(x)
@@ -147,7 +145,6 @@ class DeconvBlock3D(nn.Module):
             stride=stride,
             padding=padding,
             output_padding=output_padding,
-            bias=False,
         )
 
         norm_layer = {
@@ -172,7 +169,7 @@ class DeconvBlock3D(nn.Module):
         return self.drop(x)
 
 
-class DepthwiseDeconvBlock3D(nn.Module):
+class DepthDeconvBlock3D(nn.Module):
     """
     Depthwise-separable deconv:
       - depthwise ConvTranspose3d -> pointwise 1x1x1 conv -> norm -> act -> dropout
@@ -200,7 +197,6 @@ class DepthwiseDeconvBlock3D(nn.Module):
             padding,
             output_padding,
             groups=in_ch,
-            bias=False,
         )
         # pointwise conv
         self.pointwise = nn.Conv3d(in_ch, out_ch, 1, bias=False)

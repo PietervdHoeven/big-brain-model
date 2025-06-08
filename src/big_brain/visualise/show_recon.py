@@ -29,7 +29,7 @@ def main(run_dir: Path, n_show: int = 4):
     val_loader = datamodule.val_dataloader()
 
     model = hydra.utils.instantiate(cfg.model)
-    ckpt  = torch.load( Path('/home/spieterman/dev/big-brain-model/outputs/2025-06-06/15-55-38') / "checkpoint.pth",
+    ckpt  = torch.load(run_dir / "checkpoint.pth",
                        map_location="cpu")
     model.load_state_dict(ckpt["model"])
     model.eval()

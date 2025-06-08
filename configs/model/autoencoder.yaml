@@ -1,4 +1,4 @@
 #configs/model/custom_ae.yaml
 
-_target_: big_brain.models.auto_encoders.SlimAutoencoder
+_target_: big_brain.models.autoencoders.SlimAutoencoder
 z_dim: 256

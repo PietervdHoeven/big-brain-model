@@ -24,9 +24,9 @@ class ConvAutoEncoder(nn.Module):
         self.encoder = nn.Sequential(*encoder_cfg)
         self.decoder = nn.Sequential(*decoder_cfg)
 
-        # Print for sanity
-        print(f"Encoder blocks:\n{self.encoder}\n")
-        print(f"Decoder blocks:\n{self.decoder}\n")
+        # # Print for sanity
+        # print(f"Encoder blocks:\n{self.encoder}\n")
+        # print(f"Decoder blocks:\n{self.decoder}\n")
 
         # Probe encoder to find flattened feature size 
         with torch.no_grad():
@@ -53,15 +53,17 @@ class ConvAutoEncoder(nn.Module):
         z = self.bottleneck(g)                    # (B, latent_dim)
 
         # Decode
-        u = self.unbottleneck(z)                  # (B, C_e*D_e*H_e*W_e)
-        u = u.view(x.size(0), *self._enc_feat_shape[1:])  # (B, C_e, D_e, H_e, W_e)
-        x_hat = self.decoder(u)                   # (B, C, D, H, W)
+        u = self.unbottleneck(z)                            # (B, C_e*D_e*H_e*W_e)
+        u = u.view(x.size(0), *self._enc_feat_shape[1:])    # (B, C_e, D_e, H_e, W_e)
+        x_hat = self.decoder(u)                             # (B, C, D, H, W)
+        x_hat = nn.functional.interpolate(x_hat, size=x.shape[2:], mode='trilinear', align_corners=False)
 
-        print(
-            f"Input shape: {x.shape}",
-            f"\nEncoded shape: {f.shape}",
-            f"\nLatent shape: {z.shape}",
-            f"\nDecoded shape: {u.shape},"
-            f"\nReconstructed shape: {x_hat.shape}")
+
+        # print(
+        #     f"Input shape: {x.shape}",
+        #     f"\nEncoded shape: {f.shape}",
+        #     f"\nLatent shape: {z.shape}",
+        #     f"\nDecoded shape: {u.shape},"
+        #     f"\nReconstructed shape: {x_hat.shape}")
 
         return x_hat
