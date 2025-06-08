@@ -4,7 +4,7 @@ seed: 42
 
 defaults:
   - _self_
-  - model: autoencoder
+  - model: custom_ae
   - loss: mse
   - datamodule: autoencoder
   - trainer: autoencoder

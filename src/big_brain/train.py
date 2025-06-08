@@ -30,7 +30,7 @@ def main(cfg: DictConfig) -> None:
     log.info(f"Hydra config saved to {config_save_path}")
 
     # 1.  Reproducibility & device ------------------------------------------------
-    seed_everything(cfg.seed, workers=True)
+    seed_everything(cfg.seed, workers=True, verbose=False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 2.  Instantiate DataModule, Model, Loss ------------------------------------
@@ -39,18 +39,12 @@ def main(cfg: DictConfig) -> None:
     train_loader = datamodule.train_dataloader()
     val_loader   = datamodule.val_dataloader()
 
-    model: nn.Module     = hydra.utils.instantiate(cfg.model).to(device)
+    model: nn.Module   = hydra.utils.instantiate(cfg.model).to(device)
+
     loss_fn: nn.Module = hydra.utils.instantiate(cfg.loss)
 
     # 3.  Build optimiser ---------------------------------------------------------
-    lr       = cfg.trainer.learning_rate
-    opt_name = cfg.trainer.optimizer.lower()
-    if opt_name == "adam":
-        optimiser = optim.Adam(model.parameters(), lr=lr)
-    elif opt_name == "sgd":
-        optimiser = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
-    else:
-        raise ValueError(f"Unsupported optimizer: {cfg.trainer.optimizer}")
+    optimiser = hydra.utils.instantiate(cfg.trainer.optimiser, model.parameters())
 
     # 3b.  learning‑rate scheduler -----------------------------------------------
     scheduler = hydra.utils.instantiate(cfg.trainer.lr_scheduler, optimiser)

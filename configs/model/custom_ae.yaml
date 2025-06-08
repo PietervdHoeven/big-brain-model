@@ -1,0 +1,84 @@
+# configs/model/custom_ae_exact_shape.yaml
+
+_target_: big_brain.models.autoencoder.ConvAutoEncoder
+
+input_shape: [1, 91, 109, 91] # (C, D, H, W)
+latent_dim: 512
+
+encoder_cfg:
+  # three down‐sampling blocks, reduces spatial by ~2× each time
+  - _target_: big_brain.models.blocks.ConvBlock3D
+    in_ch: 1
+    out_ch: 32
+    kernel_size: 3
+    stride: 2
+    padding: 1
+    norm: batch
+    activation: relu
+    dropout: 0.0
+
+  - _target_: big_brain.models.blocks.ConvBlock3D
+    in_ch: 32
+    out_ch: 64
+    kernel_size: 3
+    stride: 2
+    padding: 1
+    norm: batch
+    activation: relu
+    dropout: 0.1
+
+  - _target_: big_brain.models.blocks.ConvBlock3D
+    in_ch: 64
+    out_ch: 128
+    kernel_size: 3
+    stride: 2
+    padding: 1
+    norm: batch
+    activation: relu
+    dropout: 0.15
+
+decoder_cfg:
+  # three up‐sampling blocks, roughly mirrors the above
+  - _target_: big_brain.models.blocks.DeconvBlock3D
+    in_ch: 128
+    out_ch: 64
+    kernel_size: 4    # 4,2,1 is a common choice for stride-2 transpose
+    stride: 2
+    padding: 1
+    output_padding: 0
+    norm: batch
+    activation: relu
+    dropout: 0.15
+
+  - _target_: big_brain.models.blocks.DeconvBlock3D
+    in_ch: 64
+    out_ch: 32
+    kernel_size: 4
+    stride: 2
+    padding: 1
+    output_padding: 0
+    norm: batch
+    activation: relu
+    dropout: 0.1
+
+  - _target_: big_brain.models.blocks.DeconvBlock3D
+    in_ch: 32
+    out_ch: 16
+    kernel_size: 4
+    stride: 2
+    padding: 1
+    output_padding: 0
+    norm: batch
+    activation: relu
+    dropout: 0.0
+
+  # final conv to get back to 1 channel
+  - _target_: torch.nn.Conv3d
+    in_channels: 16
+    out_channels: 1
+    kernel_size: 1
+    stride: 1
+    padding: 0
+    bias: true
+
+
