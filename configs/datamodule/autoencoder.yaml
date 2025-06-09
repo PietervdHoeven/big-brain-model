@@ -9,4 +9,4 @@ num_workers: 8              # number of workers for DataLoader (Determine for th
 pin_memory: true            # pin_memory=True keep batch in (pinned) RAM so that when you do batch.to("cuda"), this usually speeds up transfers. If you’re only on CPU, it has no effect.
 use_weighted_sampler: true  # whether to use WeightedRandomSampler for training / validation / testing
 alpha: 0.3                  # exponent in make_balanced_sampler, alpha=0 means no upweighting of rare shells
-sample_fraction: none       # fraction of the dataset to sample, None means use the full dataset
+sample_fraction: 0.0        # fraction of the dataset to sample, None means use the full dataset

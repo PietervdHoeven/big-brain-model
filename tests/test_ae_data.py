@@ -4,8 +4,8 @@ import hydra
 from omegaconf import OmegaConf
 import torch
 
-from big_brain.ae_data.dataset     import AEVolumes
-from big_brain.ae_data.datamodule  import AEDataModule
+from big_brain.data.dataset     import AEVolumes
+from big_brain.data.datamodule  import AEDataModule
 
 def smoke_test_dataset(cache_root: str):
     # 1) Instantiate the low-level Dataset directly

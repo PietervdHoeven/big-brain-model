@@ -73,6 +73,7 @@ def main(cfg: DictConfig) -> None:
 
         # scheduler step (if configured)
         scheduler.step(val_loss)
+        log.info(f"Current learning rate: {scheduler.get_last_lr()}")
 
         # early stop & checkpoint
         improved = stopper.step(val_loss)

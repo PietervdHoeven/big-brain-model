@@ -27,7 +27,7 @@ class AEDataModule:
         pin_memory: bool = True,                # pin_memory=True keep batch in (pinned) RAM so that when you do batch.to("cuda"), this usually speeds up transfers. If you’re only on CPU, it has no effect.
         use_weighted_sampler: bool = True,      # whether to use WeightedRandomSampler for training / validation / testing
         alpha: float = 0.3,                     # exponent in make_balanced_sampler, alpha=0 means no upweighting of rare shells
-        sample_fraction: float | None = None,   # 0.05 → keep 5 % of files 
+        sample_fraction: float = 0.0,           # 0.05 → keep 5 % of files | 0.0 → keep all files (default, no sampling)
     ):
         self.cache_root = cache_root
         self.batch_size = batch_size
@@ -69,7 +69,7 @@ class AEDataModule:
     def setup(self):
         full_ds = AEVolumes(self.cache_root)
 
-        if self.sample_fraction is not None:
+        if self.sample_fraction != 0.0:
             _, full_ds = create_val_test_split(
                 full_ds,
                 val_fraction=self.sample_fraction,
