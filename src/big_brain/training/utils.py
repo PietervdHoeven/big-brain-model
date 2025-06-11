@@ -4,7 +4,7 @@ import torch
 import logging
 log = logging.getLogger(__name__)
 
-def run_epoch(model, loader, criterion, optimiser=None, device='cuda'):
+def run_epoch(model, loader, loss_fn, optimiser=None, device='cuda'):
     """
     Train if optimiser is given, otherwise just validate.
     Returns the average loss for the epoch.
@@ -23,7 +23,7 @@ def run_epoch(model, loader, criterion, optimiser=None, device='cuda'):
 
             # Forward
             recon = model(x)
-            loss = criterion(recon, x)
+            loss = loss_fn(recon, x)
 
             if is_train:
                 optimiser.zero_grad(set_to_none=True)

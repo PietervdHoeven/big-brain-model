@@ -15,7 +15,7 @@ class ConvAutoEncoder(nn.Module):
         self,
         encoder_cfg: list,
         decoder_cfg: list,
-        input_shape: tuple = (1, 91, 109, 91),
+        input_shape: tuple = (1, 96, 112, 96),
         latent_dim: int = 512,
     ):
         super().__init__()
@@ -56,7 +56,7 @@ class ConvAutoEncoder(nn.Module):
         u = self.unbottleneck(z)                            # (B, C_e*D_e*H_e*W_e)
         u = u.view(x.size(0), *self._enc_feat_shape[1:])    # (B, C_e, D_e, H_e, W_e)
         x_hat = self.decoder(u)                             # (B, C, D, H, W)
-        x_hat = nn.functional.interpolate(x_hat, size=x.shape[2:], mode='trilinear', align_corners=False)
+
 
 
         # print(
