@@ -3,10 +3,11 @@ import torch.nn as nn
 
 from typing import Optional
 
+from big_brain.models.layers import UpconvLayer, ConvLayer
+
 class Decoder(nn.Module):
-    def __init__(self, blocks):
+    def __init__(self):
         super().__init__()
-        self.blocks = blocks
 
     def forward(
             self,
@@ -14,12 +15,19 @@ class Decoder(nn.Module):
             residuals: Optional[list[torch.Tensor]] = None
             ) -> torch.Tensor:
         # Forward pass through the decoder.
-        if residuals is None:               # if no residuals are provided
-            for layer in self.blocks:       # just pass through the layers
-                x = layer(x)
-            return x
-        for idx, layer in enumerate(self.blocks):   # iterate through the layers
-            skip = residuals[-(idx +1)]             # get residuals, starting from the last layer in the encoder
-            x = torch.cat([x, skip], dim=1)         # concatenate the skip connection
-            x = layer(x)                            # Compute the layer output
+        for i, layer in enumerate(self._modules.values()):
+            if residuals is not None:
+                r = residuals[-(i + 1)]  # Get the corresponding residual (reverse order, last encoder r becomes first decoder)
+                x = torch.cat((x, r), dim=1)  # Concatenate along the channel dimension
+            x = layer(x)
         return x
+    
+
+class ConvDecoder(Decoder):
+    def __init__(self, skip_connections: bool = False):
+        super().__init__()
+        self.multiplier = 2 if skip_connections else 1
+        # [32, 6, 7, 6]
+        self.upconv1a = UpconvLayer(32 * self.multiplier, 128, kernel_size=2, stride=2)
+        self.conv1b = ConvLayer()
+

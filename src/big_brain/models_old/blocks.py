@@ -119,7 +119,7 @@ class DepthConvLayer(nn.Module):
         return self.pool(x)
 
 
-class DeconvLayer(nn.Module):
+class TconvLayer(nn.Module):
     """
     Upsampling counterpart of ConvBlock3D:
       ConvTranspose3d -> norm -> activation -> (optional) dropout
@@ -128,9 +128,9 @@ class DeconvLayer(nn.Module):
         self,
         in_ch: int,
         out_ch: int,
-        kernel_size: int = 4,       # 4, stride=2 gives "same" upsample
+        kernel_size: int = 2,       #  kernel=2, stride=2 gives "same" upsample as pool=2
         stride: int = 2,
-        padding: int = 1,
+        padding: int = 0,
         output_padding: int = 0,
         norm: str = "batch",       # "batch" | "inst" | "group"
         activation: str = "relu",  # "relu"  | "gelu"
@@ -169,56 +169,60 @@ class DeconvLayer(nn.Module):
         return self.drop(x)
 
 
-class DepthDeconvLayer(nn.Module):
-    """
-    Depthwise-separable deconv:
-      - depthwise ConvTranspose3d -> pointwise 1x1x1 conv -> norm -> act -> dropout
-    """
-    def __init__(
-        self,
-        in_ch: int,
-        out_ch: int,
-        kernel_size: int = 4,
-        stride: int = 2,
-        padding: int = 1,
-        output_padding: int = 0,
-        norm: str = "batch",
-        activation: str = "relu",
-        dropout: float = 0.0,
-    ):
-        super().__init__()
+# class UpconvLayer(nn.Module):
+#     """
+#     Depthwise-separable deconv:
+#       - depthwise ConvTranspose3d -> pointwise 1x1x1 conv -> norm -> act -> dropout
+#     """
+#     def __init__(
+#         self,
+#         in_ch: int,
+#         out_ch: int,
+#         kernel_size: int = 4,
+#         stride: int = 2,
+#         padding: int = 1,
+#         output_padding: int = 0,
+#         norm: str = "batch",
+#         activation: str = "relu",
+#         dropout: float = 0.0,
+#     ):
+#         super().__init__()
 
-        # depthwise deconv (per-channel upsample)
-        self.depthwise_deconv = nn.ConvTranspose3d(
-            in_ch,
-            in_ch,
-            kernel_size,
-            stride,
-            padding,
-            output_padding,
-            groups=in_ch,
-        )
-        # pointwise conv
-        self.pointwise = nn.Conv3d(in_ch, out_ch, 1, bias=False)
+#         self.upsample = nn.Upsample(
 
-        norm_layer = {
-            "batch": nn.BatchNorm3d,
-            "inst":  nn.InstanceNorm3d,
-            "group": lambda c: nn.GroupNorm(8, c),
-        }[norm]
-        self.norm = norm_layer(out_ch)
+#         )
 
-        act_layer = {
-            "relu": nn.ReLU,
-            "gelu": nn.GELU,
-        }[activation]
-        self.act = act_layer()
+#         # depthwise deconv (per-channel upsample)
+#         self.depthwise_deconv = nn.ConvTranspose3d(
+#             in_ch,
+#             in_ch,
+#             kernel_size,
+#             stride,
+#             padding,
+#             output_padding,
+#             groups=in_ch,
+#         )
+#         # pointwise conv
+#         self.pointwise = nn.Conv3d(in_ch, out_ch, 1, bias=False)
 
-        self.drop = nn.Dropout3d(dropout) if dropout > 0 else nn.Identity()
+#         norm_layer = {
+#             "batch": nn.BatchNorm3d,
+#             "inst":  nn.InstanceNorm3d,
+#             "group": lambda c: nn.GroupNorm(8, c),
+#         }[norm]
+#         self.norm = norm_layer(out_ch)
 
-    def forward(self, x):
-        x = self.depthwise_deconv(x)
-        x = self.pointwise(x)
-        x = self.norm(x)
-        x = self.act(x)
-        return self.drop(x)
+#         act_layer = {
+#             "relu": nn.ReLU,
+#             "gelu": nn.GELU,
+#         }[activation]
+#         self.act = act_layer()
+
+#         self.drop = nn.Dropout3d(dropout) if dropout > 0 else nn.Identity()
+
+#     def forward(self, x):
+#         x = self.depthwise_deconv(x)
+#         x = self.pointwise(x)
+#         x = self.norm(x)
+#         x = self.act(x)
+#         return self.drop(x)
