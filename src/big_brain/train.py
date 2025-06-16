@@ -33,7 +33,8 @@ def main(cfg: DictConfig) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 3.  Instantiate DataModule, Model, Loss ------------------------------------
-    datamodule = hydra.utils.instantiate(cfg.datamodule).setup()
+    datamodule = hydra.utils.instantiate(cfg.datamodule)
+    datamodule.setup()
     train_loader = datamodule.train_dataloader()
     val_loader   = datamodule.val_dataloader()
 
@@ -42,19 +43,19 @@ def main(cfg: DictConfig) -> None:
     loss_fn: nn.Module = hydra.utils.instantiate(cfg.loss)
 
     # 4.  Build optimiser ---------------------------------------------------------
-    optimiser = hydra.utils.instantiate(cfg.trainer.optimiser, model.parameters())
+    optimiser = hydra.utils.instantiate(cfg.optimiser, model.parameters())
 
     # 4b.  learning‑rate scheduler -----------------------------------------------
-    scheduler = hydra.utils.instantiate(cfg.trainer.lr_scheduler, optimiser)
+    scheduler = hydra.utils.instantiate(cfg.scheduler, optimiser)
 
     # 5.  Early‑stopping & checkpoint helpers ------------------------------------
-    stopper = hydra.utils.instantiate(cfg.trainer.early_stopping)
-    best_ckpt = out_dir / "checkpoint.pth"
+    stopper = hydra.utils.instantiate(cfg.stopper)
 
     # 6.  Epoch loop --------------------------------------------------------------
+    best_ckpt = out_dir / "checkpoint.pth"
     history = {"epoch": [], "train_loss": [], "val_loss": []}
 
-    for epoch in range(1, cfg.trainer.max_epochs + 1):
+    for epoch in range(1, cfg.max_epochs + 1):
         train_loss = run_epoch(model, train_loader, loss_fn,
                             optimiser=optimiser, device=device)
 
@@ -67,10 +68,10 @@ def main(cfg: DictConfig) -> None:
         history["epoch"].append(epoch)
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
-        log.info(f"[{epoch:03d}/{cfg.trainer.max_epochs}] train {train_loss:.4e} | val {val_loss:.4e}")
+        log.info(f"[{epoch:03d}/{cfg.max_epochs}] train {train_loss:.4f} | val {val_loss:.4f}")
 
         # scheduler step (if configured)
-        scheduler.step(val_loss)
+        scheduler.step()
         log.info(f"Current learning rate: {scheduler.get_last_lr()}")
 
         # early stop & checkpoint

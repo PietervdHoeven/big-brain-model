@@ -1,11 +1,5 @@
 # configs/scheduler/warmup_cosine.yaml
-_target_: torch.optim.lr_scheduler.SequentialLR
-schedulers:
-  - _target_: torch.optim.lr_scheduler.LinearLR
-    start_factor: 0.0
-    end_factor: 1.0
-    total_iters: 5
-  - _target_: torch.optim.lr_scheduler.CosineAnnealingLR
-    T_max: 195
-    eta_min: 1e-6
-milestones: [5]
+_target_: big_brain.training.schedulers.get_warmup_cosine
+warmup_epochs: 5
+max_epochs:    ${max_epochs}
+eta_min:       1e-6
