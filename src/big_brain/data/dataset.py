@@ -31,7 +31,7 @@ class AEVolumes(Dataset):
 
         # 3) Acquisition metadata
         bval = torch.tensor(float(data["bval"].item()), dtype=torch.float32)
-        #bvec = torch.from_numpy(data["bvec"].astype(np.float32))
+        bvec = torch.from_numpy(data["bvec"].astype(np.float32))
 
         # 4) Spatial metadata
         affine = torch.from_numpy(data["affine"].astype(np.float32))  # shape: [4,4]
@@ -43,11 +43,31 @@ class AEVolumes(Dataset):
         return {
             "vol":     vol,
             "bval":    bval,
-            #"bvec":    bvec,
+            "bvec":    bvec,
             "affine":  affine,
             "patient": patient,
             "session": session,
         }
 
 
-        
+class WithTransforms(Dataset):
+    """
+    Wrap a AEVolumes dataset and call transform(sample["vol"]) on each sample.
+    """
+    def __init__(self, base: Dataset, transform):
+        self.base = base
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.base)
+    
+    def __getitem__(self, idx):
+        sample = self.base[idx]     # Get the original dict
+        sample = dict(sample)       # Don't mutate the original dict
+        sample["orig"] = sample["vol"].clone()
+        sample["vol"] = self.transform(sample["vol"])
+        return sample
+    
+    def __getattr__(self, name):
+        # Forward all other attributes to the base dataset.
+        return getattr(self.base, name)

@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torch.utils.data import Subset, WeightedRandomSampler
 from collections import defaultdict, Counter
+import torchio as tio
 
 def create_val_test_split(
         dataset,
@@ -38,7 +39,6 @@ def create_val_test_split(
         return sub
 
     return make_subset(train_idx), make_subset(val_idx)
-
 
 
 def make_balanced_sampler(
@@ -81,3 +81,18 @@ def make_balanced_sampler(
         replacement=True
     )
     return sampler
+
+
+def make_augmentation_transforms():
+    """Return the standard 3-D augmentation Compose."""
+    return tio.Compose([
+        # geometric
+        tio.RandomAffine(scales=0.5, degrees=50, translation=50),
+        tio.RandomElasticDeformation(num_control_points=7,
+                                     max_displacement=3,
+                                     locked_borders=2),
+        tio.RandomFlip(axes=('LR',), flip_probability=0.5),
+        # intensity
+        tio.RandomGamma(log_gamma=(-0.1, 0.1)),
+        tio.RandomNoise(std=0.01),
+    ])

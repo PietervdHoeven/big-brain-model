@@ -4,8 +4,11 @@ from typing import Optional, Tuple
 
 from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 
-from big_brain.data.dataset import AEVolumes
-from big_brain.data.utils   import create_val_test_split, make_balanced_sampler
+from big_brain.data.dataset import AEVolumes, WithTransforms
+from big_brain.data.utils   import create_val_test_split, make_balanced_sampler, make_augmentation_transforms
+
+import logging
+log = logging.getLogger(__name__)
 
 class AEDataModule:
     """
@@ -28,6 +31,7 @@ class AEDataModule:
         use_weighted_sampler: bool = True,      # whether to use WeightedRandomSampler for training / validation / testing
         alpha: float = 0.3,                     # exponent in make_balanced_sampler, alpha=0 means no upweighting of rare shells
         sample_fraction: float = 0.0,           # 0.05 → keep 5 % of files | 0.0 → keep all files (default, no sampling)
+        enable_aug: bool = True,             # whether to apply augmentation transforms to the training set
     ):
         self.cache_root = cache_root
         self.batch_size = batch_size
@@ -38,6 +42,7 @@ class AEDataModule:
         self.use_weighted_sampler = use_weighted_sampler
         self.alpha = alpha
         self.sample_fraction = sample_fraction
+        self.enable_aug = enable_aug
 
         # will be filled by `setup()`
         self.train_dataset: Optional[Subset] = None
@@ -67,6 +72,7 @@ class AEDataModule:
 
     # public API expected by training loop (or Lightning)
     def setup(self):
+        log.info("Setting up AEDataModule...")
         full_ds = AEVolumes(self.cache_root)
 
         if self.sample_fraction != 0.0:
@@ -76,6 +82,11 @@ class AEDataModule:
             )
 
         self.train_dataset, self.val_dataset, self.test_dataset = self._three_way_split(full_ds)
+
+        # Optionally apply transforms to the datasets
+        # if self.enable_aug:
+        #     transform = make_augmentation_transforms()
+        #     self.train_dataset = WithTransforms(self.train_dataset, transform)
 
         if self.use_weighted_sampler:
             self.train_sampler = make_balanced_sampler(self.train_dataset, alpha=self.alpha)
@@ -94,7 +105,6 @@ class AEDataModule:
             pin_memory=self.pin_memory,
         )
 
-    # Lightning - style names, but work fine in plain PyTorch loops too
     def train_dataloader(self):
         return self._dl(self.train_dataset, self.train_sampler, shuffle=True)
 
