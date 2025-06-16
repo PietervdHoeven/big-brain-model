@@ -1,3 +1,2 @@
 # configs/loss/l1.yaml
-
 _target_: torch.nn.L1Loss

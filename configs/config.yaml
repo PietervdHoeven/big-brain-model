@@ -1,11 +1,14 @@
 # configs/config.yaml
 
 seed: 42
+max_epochs: 200
 
 defaults:
   - _self_
-  - model: custom_ae
+  - model: autoencoder
   - loss: mse
   - datamodule: autoencoder
-  - trainer: autoencoder
+  - optimiser: adamw
+  - scheduler: warmup_cosine
+  - stopper: early
 

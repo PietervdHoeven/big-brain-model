@@ -1,0 +1,6 @@
+# configs/scheduler/plateau.yaml
+_target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+mode: min
+factor: 0.5
+patience: 10
+min_lr: 1e-6

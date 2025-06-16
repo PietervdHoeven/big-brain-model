@@ -1,4 +1,11 @@
 #configs/model/custom_ae.yaml
 
-_target_: big_brain.models.autoencoders.SlimAutoencoder
-z_dim: 512
+_target_: big_brain.models.autoencoders.AutoEncoder
+encoder:
+  _target_: big_brain.models.encoders.Encoder
+  norm: group
+  activation: gelu
+decoder:
+  _target_: big_brain.models.decoders.Decoder
+  norm: group
+  activation: gelu

@@ -2,7 +2,7 @@
 
 _target_: big_brain.data.datamodule.AEDataModule
 cache_root: /home/spieterman/dev/big-brain-model/data/encoder
-batch_size: 4               # batch size for training / validation / testing
+batch_size: 6               # batch size for training / validation / testing
 val_split: 0.10             # fraction of the dataset to use for validation
 test_split: 0.10            # fraction of the dataset to use for testing
 num_workers: 8              # number of workers for DataLoader (Determine for the slurm script)

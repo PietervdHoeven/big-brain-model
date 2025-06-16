@@ -1,0 +1,5 @@
+# configs/stopper/early.yaml
+_target_: big_brain.training.stopping.EarlyStopper
+mode: min
+patience: 20
+delta: 1e-4

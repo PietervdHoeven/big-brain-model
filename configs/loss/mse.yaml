@@ -1,4 +1,3 @@
 # configs/loss/mse.yaml
-
 _target_: torch.nn.MSELoss
 reduction: mean

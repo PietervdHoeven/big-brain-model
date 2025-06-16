@@ -3,7 +3,7 @@ import torch.nn as nn
 from big_brain.models.encoders import Encoder
 from big_brain.models.decoders import Decoder
 
-class autoencoder(nn.Module):
+class AutoEncoder(nn.Module):
     def __init__(self, encoder, decoder):
         super().__init__()
         self.encoder = encoder
@@ -13,8 +13,8 @@ class autoencoder(nn.Module):
         y = self.decoder(z)
         return y
     
-ae = autoencoder(Encoder(), Decoder())
+ae = AutoEncoder(Encoder(), Decoder())
 
-x = torch.randn(16, 1, 96, 112, 96)  # Example input tensor
-output = ae(x)
-print(f"Output shape: {output.shape}")  # Should be [B, 1, 96, 112, 96]
+# x = torch.randn(16, 1, 96, 112, 96)  # Example input tensor
+# output = ae(x)
+# print(f"Output shape: {output.shape}")  # Should be [B, 1, 96, 112, 96]

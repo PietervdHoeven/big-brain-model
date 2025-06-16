@@ -4,8 +4,8 @@ from typing import Optional, Tuple
 
 from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 
-from .dataset import AEVolumes                    # your Dataset class
-from .utils   import create_val_test_split, make_balanced_sampler
+from big_brain.data.dataset import AEVolumes
+from big_brain.data.utils   import create_val_test_split, make_balanced_sampler
 
 class AEDataModule:
     """
