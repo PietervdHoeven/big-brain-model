@@ -31,12 +31,14 @@ class ConvLayer(nn.Module):
             "batch": nn.BatchNorm3d,
             "inst":  nn.InstanceNorm3d,
             "group": lambda c: nn.GroupNorm(8, c),
+            None: nn.Identity,
         }[norm]
         self.norm = norm_layer(out_ch)
 
         act_layer = {
             "relu": nn.ReLU,
             "gelu": nn.GELU,
+            None: nn.Identity,
         }[activation]
         self.act = act_layer()
 
