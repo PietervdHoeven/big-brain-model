@@ -1,5 +1,5 @@
+import torch
 import torch.nn as nn
-
 
 class ConvLayer(nn.Module):
     """
@@ -47,7 +47,7 @@ class ConvLayer(nn.Module):
             "avg": nn.AvgPool3d,
             None: nn.Identity,
         }[pool]
-        self.pool = pool_layer(kernel_size=2, stride=2, padding=0, ceil_mode=True)
+        self.pool = pool_layer(kernel_size=2, stride=2, padding=0)
 
     def forward(self, x):
         x = self.conv(x)
@@ -56,62 +56,6 @@ class ConvLayer(nn.Module):
         x = self.drop(x)
         return self.pool(x)
     
-
-class ResLayer(nn.Module):
-    """
-    Regular 3-D convolution -> norm -> activation -> (optional) dropout.
-    """
-    def __init__(
-        self,
-        in_ch: int,
-        out_ch: int,
-        kernel_size: int = 3,
-        stride: int = 1,
-        padding: int = 1,
-        norm: str = "batch",            # "batch" | "inst" | "group"
-        activation: str = "relu",       # "relu"  | "gelu"
-        dropout: float = 0.0,
-        pool: str | None = "max",              # "max" | "avg" | None
-    ):
-        super().__init__()
-
-        self.conv = nn.Conv3d(
-            in_channels=in_ch,
-            out_channels=out_ch,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-        )
-
-        norm_layer = {
-            "batch": nn.BatchNorm3d,
-            "inst":  nn.InstanceNorm3d,
-            "group": lambda c: nn.GroupNorm(8, c),
-        }[norm]
-        self.norm = norm_layer(out_ch)
-
-        act_layer = {
-            "relu": nn.ReLU,
-            "gelu": nn.GELU,
-        }[activation]
-        self.act = act_layer()
-
-        self.drop = nn.Dropout3d(dropout) if dropout > 0 else nn.Identity()
-
-        pool_layer = {
-            "max": nn.MaxPool3d,
-            "avg": nn.AvgPool3d,
-            None: nn.Identity,
-        }[pool]
-        self.pool = pool_layer(kernel_size=2, stride=2, padding=0, ceil_mode=True)
-
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.norm(x)
-        x = self.act(x)
-        x = self.drop(x)
-        return self.pool(x)
-
 
 class DepthConvLayer(nn.Module):
     """
@@ -173,22 +117,22 @@ class DepthConvLayer(nn.Module):
         x = self.act(x)
         x = self.drop(x)
         return self.pool(x)
+    
 
-
-class UpconvLayer(nn.Module):
+class DeconvLayer(nn.Module):
     """
-    Upsampling counterpart of ConvBlock3D:
-      ConvTranspose3d -> norm -> activation -> (optional) dropout
+    Transposed convolution layer with optional norm, activation, and dropout.
     """
     def __init__(
         self,
         in_ch: int,
         out_ch: int,
-        kernel_size: int = 2,       # 4, stride=2 gives "same" upsample
+        kernel_size: int = 2,
         stride: int = 2,
         padding: int = 0,
-        norm: str = "batch",        # "batch" | "inst" | "group"
-        activation: str = "relu",   # "relu"  | "gelu"
+        output_padding: int = 0,
+        norm: str = "batch",            # "batch" | "inst" | "group"
+        activation: str = "relu",       # "relu"  | "gelu"
         dropout: float = 0.0,
     ):
         super().__init__()
@@ -199,6 +143,7 @@ class UpconvLayer(nn.Module):
             kernel_size=kernel_size,
             stride=stride,
             padding=padding,
+            output_padding=output_padding
         )
 
         norm_layer = {
@@ -220,4 +165,5 @@ class UpconvLayer(nn.Module):
         x = self.deconv(x)
         x = self.norm(x)
         x = self.act(x)
-        return self.drop(x)
+        x = self.drop(x)
+        return x
