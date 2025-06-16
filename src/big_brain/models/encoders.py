@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+
 from big_brain.models.blocks import ConvLayer
 
 class Encoder(nn.Module):
@@ -33,7 +34,7 @@ class Encoder(nn.Module):
             print(f"After {layer.__class__.__name__}: {x.shape}")
         return x
     
-x = torch.randn(1, 1, 96, 112, 96)  # Example input tensor
+x = torch.randn(16, 1, 96, 112, 96)  # Example input tensor
 encoder = Encoder()
 output = encoder(x)
 print(f"Output shape: {output.shape}")  # Should be [B, 512, 1, 1, 1]
