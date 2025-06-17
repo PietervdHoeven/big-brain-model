@@ -1,5 +1,5 @@
 # src/big_brain/visualize/show_recon.py
-import sys, random, json
+import sys
 from pathlib import Path
 import torch
 import matplotlib.pyplot as plt

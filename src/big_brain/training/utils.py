@@ -8,8 +8,7 @@ from torch.amp import autocast, GradScaler
 from pathlib import Path
 import json
 import pandas as pd
-
-from big_brain.visualise import plot_history, show_recon
+import seaborn as sns
 
 log = logging.getLogger(__name__)
 
@@ -86,14 +85,30 @@ def persist_history(history: dict, out_dir: Path) -> None:
     log.info(f"History saved to {hist_path_json} & {hist_path_csv}")
 
 
-def generate_visualisations(out_dir: Path, n_recon: int = 4) -> None:
+def plot_history(out_dir: Path) -> None:
     """
-    Generate visualisations for training history and reconstructions.
+    Plot training history from JSON or CSV file.
     """
-    try:
-        log.info("Generating visualisations (loss curves & reconstructions)...")
-        plot_history.main(out_dir)
-        show_recon.main(out_dir, n_show=n_recon)
-        log.info("All plots saved in run directory.")
-    except Exception as e:
-        log.warning(f"[WARN] Plot generation failed: {e}")
+    # 1) load history
+    hist_json = out_dir / "history.json"
+    if hist_json.exists():
+        with open(hist_json) as f:
+            history = json.load(f)
+        df = pd.DataFrame(history)
+    else:                                 # fallback to CSV
+        df = pd.read_csv(out_dir / "history.csv")
+
+    # 2) plot
+    sns.set_theme(style="whitegrid")
+    ax = sns.lineplot(data=df, x="epoch", y="train_loss",
+                      marker="o", label="train")
+    sns.lineplot(data=df, x="epoch", y="val_loss",
+                 marker="x", linestyle="--", label="val", ax=ax)
+    ax.set(xlabel="Epoch", ylabel="MSE loss", title="AE reconstruction loss")
+    fig = ax.get_figure()
+
+    # 3) save under out_dir
+    out_png = out_dir / "loss_curve.png"
+    out_pdf = out_dir / "loss_curve.pdf"
+    fig.savefig(out_png, dpi=300); fig.savefig(out_pdf)
+    log.info(f"Saved curves -> {out_png}  &  {out_pdf}")

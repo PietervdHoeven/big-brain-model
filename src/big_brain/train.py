@@ -8,7 +8,8 @@ import torch
 import torch.nn as nn
 from pytorch_lightning import seed_everything
 
-from big_brain.training.utils import run_epoch, persist_history, generate_visualisations
+from big_brain.training.utils import run_epoch, persist_history, plot_history
+from big_brain.visualise import show_recon
 
 import logging
 log = logging.getLogger(__name__)
@@ -85,15 +86,19 @@ def main(cfg: DictConfig) -> None:
             }, best_ckpt)
             log.info(f"New best model saved -> {best_ckpt}  (val={val_loss:.4e})")
 
+        # Save learning history and plot
+        persist_history(history, out_dir)
+        plot_history(out_dir)
+
+        # If early stopping is triggered, break the loop
         if stopper.should_stop:
             log.info(f"Early stopping triggered (patience={stopper.patience}).")
+            log.info(f"Best model saved at epoch {stopper.best_epoch} with val loss {stopper.best_val_loss:.4e}")
+            log.info(f"Generating reconstruction of MRIs for visualisation...")
+            show_recon(out_dir, n_show=4).main()
+            log.info("Reconstruction visualisation complete.")
             break
 
-    # 7.  Persist history ---------------------------------------------------------
-    persist_history(history, out_dir)
-
-    # 8.  auto‑generate visualisations ----------------------------------
-    generate_visualisations(out_dir)
 
 
 if __name__ == "__main__":
