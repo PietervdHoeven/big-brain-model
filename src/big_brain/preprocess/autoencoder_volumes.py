@@ -201,7 +201,7 @@ def process_session(dwi_path: Path):
             out_file,
             vol_data=vol_data,                          # 3D gradient volume (X, Y, Z)
             bval=np.float32(bvals[g]),                  # single b-value for this gradient
-            bvec=np.float32(bvecs[:, g]),             # 3D b-vector for this gradient TODO: bvecs are wrongly concatenated over runs
+            bvec=np.float32(bvecs[:, g]),               # 3D b-vector for this gradient
             affine=dwi_img.affine.astype(np.float32),   # preserves spatial orientation for nifti reconstruction
             patient=p_id,                               # for downstream grouping or sampling
             session=s_id                                # ditto
