@@ -4,7 +4,7 @@ from pathlib import Path
 import torch
 import matplotlib.pyplot as plt
 
-from big_brain.data.datamodule import AEDataModule
+from big_brain.data.datamodules import AEDataModule
 
 
 # ──────────────────────────────────────────────────────────────────

@@ -3,8 +3,10 @@ import torch
 from torch.utils.data import Subset, WeightedRandomSampler
 from collections import defaultdict, Counter
 import torchio as tio
+from typing import List, Tuple
 
-def create_val_test_split(
+
+def create_train_val_split(
         dataset,
         val_fraction: float = 0.1
 ):
@@ -26,22 +28,25 @@ def create_val_test_split(
     all_idx  = np.arange(n_total)
     rng.shuffle(all_idx)
 
-    val_idx   = all_idx[:n_val]
-    train_idx = all_idx[n_val:]
+    val_idx   = all_idx[:n_val] # first 10% is for validation
+    train_idx = all_idx[n_val:] # Rest is for training
 
-    def make_subset(idxs):
-        sub = Subset(dataset, idxs.tolist())
-        # attach split-specific metadata for later weighting
-        sub.patients  = [dataset.patients[i]  for i in idxs]
-        sub.sessions  = [dataset.sessions[i]  for i in idxs]
-        sub.bvals     = [dataset.bvals[i]     for i in idxs]
-
-        return sub
-
-    return make_subset(train_idx), make_subset(val_idx)
+    return make_subset(dataset, train_idx), make_subset(dataset, val_idx)
 
 
-def make_balanced_sampler(
+def make_subset(dataset, idxs):
+    sub = Subset(dataset, idxs.tolist())
+    # attach split-specific metadata for later weighting
+    sub.patients  = [dataset.patients[i]  for i in idxs]
+    sub.sessions  = [dataset.sessions[i]  for i in idxs]
+    if hasattr(dataset, 'bvals'):
+        sub.bvals = [dataset.bvals[i] for i in idxs]
+    if hasattr(dataset, 'lengths'):
+        sub.lengths = [dataset.lengths[i] for i in idxs]
+    return sub
+
+
+def make_ae_sampler(
     dataset, alpha=0.3
 ):
     """
@@ -83,6 +88,25 @@ def make_balanced_sampler(
     return sampler
 
 
+def make_tf_sampler(dataset):
+    # 1) Count how many sessions per patient
+    patient2sessions = defaultdict(set)
+    for p, s in zip(dataset.patients, dataset.sessions):
+        patient2sessions[p].add(s)
+    S_counts = {p: len(sset) for p, sset in patient2sessions.items()} # |S_p| for each patient p
+
+    # 2) Build weights
+    weights = [1.0 / S_counts[p] for p in dataset.patients]
+
+    # 3) Create Pytorch wighted sampler
+    sampler = WeightedRandomSampler(
+        weights=torch.DoubleTensor(weights),
+        num_samples=len(weights),
+        replacement=True
+    )
+    return sampler
+
+
 def make_augmentation_transforms():
     """Return the standard 3-D augmentation Compose."""
     return tio.Compose([
@@ -96,3 +120,53 @@ def make_augmentation_transforms():
         tio.RandomGamma(log_gamma=(-0.1, 0.1)),
         tio.RandomNoise(std=0.01),
     ])
+
+
+def collate_batch(batch: List[Tuple[torch.Tensor, torch.Tensor, int]], p: float = 0.15):
+    # Get metadata from batch
+    B = len(batch)
+    print([item[2] for item in batch])
+    L_max = max([item[2] for item in batch])
+    print(f"L_max = {L_max}")
+
+    # allocate tensors
+    Z_pad = torch.zeros((B, L_max+1, 512), dtype=torch.float16)         # L_max+1 because we need to make room for a [CLS] token at the first i
+    G_pad = torch.zeros(B, L_max+1, 4, dtype=torch.float32)
+    attn_mask = torch.zeros(B, L_max+1, dtype=torch.bool)
+    mdm_labels = torch.zeros_like(Z_pad, dtype=torch.float16)
+    mdm_mask = torch.zeros(B, L_max+1, dtype=torch.bool)
+
+    print(f"Z pad shape: {Z_pad.shape}")
+    print(f"G_pad shape: {G_pad.shape}")
+    print(f"mdm_labels shape: {mdm_labels.shape}")
+
+    # collate batch
+    for b, (z, g, L) in enumerate(batch):
+        # debugging print shapes:
+        print(f"b = {b}, L = {L}")
+        print(f"z.shape = {z.shape}")
+        print(f"g.shape = {g.shape}")
+
+        # Prepend room for [cls] token (tensor is already 0)
+        Z_pad[b,1:L+1] = z
+        G_pad[b,1:L+1] = g
+        attn_mask[b,0:L+1] = True
+
+        # 80/10/10 mask (See BERT paper)
+        n_mask = int(p * L)                     # Number of elements we need to mask according to p
+        idx = torch.randperm(L)[:n_mask] + 1    # Take all the indices, shuffle them and take the first n_mask (+ 1 because we never want to pick the 0 index because it's for the [CLS] token)
+        mdm_mask[b, idx] = True                 # Mask that indicates what indices are going to be masked in the Masked Diffusion Modelling (MDM)
+        print(f"mdm_labels shape at b: {b}, idx: {idx} = {mdm_labels[b, idx].shape}")
+        print(f"z.shape = {z.shape}")
+        mdm_labels[b, idx] = Z_pad[b, idx]         # We have the true values in Z_pad. Store them into mdm_labels. These will be the target labels
+
+        rand = torch.rand(n_mask)                       # For each index in sample a random value between [0,1)
+        mask_idx = idx[rand < 0.80]                     # All indices with random sample below 0.8 get masked
+        rand_idx = idx[(rand >= 0.80) & (rand < 0.90)]  # All indices between 0.8 and 0.9 get appointed a random z
+                                                        # All indices above 0.9 are left as is
+        if len(rand_idx):                               # [RANDOM]  # Take len(rand_idx) random zs from Z_pad from indices 1:L+1 and replace them with the orignal zs
+            Z_pad[b, rand_idx] = Z_pad[b, torch.randint(1, L+1, (len(rand_idx),))]
+        Z_pad[b, mask_idx] = 0                          # [MASK]    # Replace the masked tokens with empty z's [0, ..., 0].shape = 512
+
+    return Z_pad, G_pad, attn_mask, mdm_labels, mdm_mask
+
