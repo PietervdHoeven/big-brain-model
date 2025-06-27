@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class ConvLayer(nn.Module):
     """
@@ -169,3 +170,41 @@ class DeconvLayer(nn.Module):
         x = self.act(x)
         x = self.drop(x)
         return x
+    
+
+
+class TokenEmbedder(nn.Module):
+    """
+    (latent z 512, gradient g 4) --> d_model
+    """
+    def __init__(self, d_model: int = 384):
+        super().__init__()
+        self.proj_z = nn.Linear(512, d_model)
+        self.proj_g = nn.Linear(4, d_model)
+        self.layernorm = nn.LayerNorm(d_model)
+
+    def forward(self, z: torch.Tensor, g: torch.Tensor):
+        """
+        z: [B, 512] latent vector
+        g: [B, 4] gradient info (bval, bvec, bvec, bvec)
+        """
+        z_emb = self.proj_z(z)
+        g_emb = self.proj_g(g)
+        x = z_emb + g_emb       # [B, d_model]
+        x = self.layernorm(x)   # [B, d_model]
+        return x
+    
+
+class TiedLinear(nn.Module):
+    """
+    Acts like nn.Linear(d_model -> 512, bias=False)
+    but re-uses the *column* weight matrix of the embedder
+    (shape (d_model, 512)) and applies it transposed.
+    """
+    def __init__(self, shared_weight: nn.Parameter):
+        super().__init__()
+        self.weight = shared_weight            # shape (d_model, 512)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # F.linear expects weight shape (out_features, in_features)
+        return F.linear(x, self.weight.t())    # (B,L,512)

@@ -125,9 +125,7 @@ def make_augmentation_transforms():
 def collate_batch(batch: List[Tuple[torch.Tensor, torch.Tensor, int]], p: float = 0.15):
     # Get metadata from batch
     B = len(batch)
-    print([item[2] for item in batch])
     L_max = max([item[2] for item in batch])
-    print(f"L_max = {L_max}")
 
     # allocate tensors
     Z_pad = torch.zeros((B, L_max+1, 512), dtype=torch.float16)         # L_max+1 because we need to make room for a [CLS] token at the first i
@@ -136,29 +134,18 @@ def collate_batch(batch: List[Tuple[torch.Tensor, torch.Tensor, int]], p: float 
     mdm_labels = torch.zeros_like(Z_pad, dtype=torch.float16)
     mdm_mask = torch.zeros(B, L_max+1, dtype=torch.bool)
 
-    print(f"Z pad shape: {Z_pad.shape}")
-    print(f"G_pad shape: {G_pad.shape}")
-    print(f"mdm_labels shape: {mdm_labels.shape}")
-
     # collate batch
     for b, (z, g, L) in enumerate(batch):
-        # debugging print shapes:
-        print(f"b = {b}, L = {L}")
-        print(f"z.shape = {z.shape}")
-        print(f"g.shape = {g.shape}")
-
         # Prepend room for [cls] token (tensor is already 0)
         Z_pad[b,1:L+1] = z
         G_pad[b,1:L+1] = g
         attn_mask[b,0:L+1] = True
 
         # 80/10/10 mask (See BERT paper)
-        n_mask = int(p * L)                     # Number of elements we need to mask according to p
-        idx = torch.randperm(L)[:n_mask] + 1    # Take all the indices, shuffle them and take the first n_mask (+ 1 because we never want to pick the 0 index because it's for the [CLS] token)
-        mdm_mask[b, idx] = True                 # Mask that indicates what indices are going to be masked in the Masked Diffusion Modelling (MDM)
-        print(f"mdm_labels shape at b: {b}, idx: {idx} = {mdm_labels[b, idx].shape}")
-        print(f"z.shape = {z.shape}")
-        mdm_labels[b, idx] = Z_pad[b, idx]         # We have the true values in Z_pad. Store them into mdm_labels. These will be the target labels
+        n_mask = int(p * L)                         # Number of elements we need to mask according to p
+        idx = torch.randperm(L)[:n_mask] + 1        # Take all the indices, shuffle them and take the first n_mask (+ 1 because we never want to pick the 0 index because it's for the [CLS] token)
+        mdm_mask[b, idx] = True                     # Mask that indicates what indices are going to be masked in the Masked Diffusion Modelling (MDM)
+        mdm_labels[b, idx] = Z_pad[b, idx]          # We have the true values in Z_pad. Store them into mdm_labels. These will be the target labels
 
         rand = torch.rand(n_mask)                       # For each index in sample a random value between [0,1)
         mask_idx = idx[rand < 0.80]                     # All indices with random sample below 0.8 get masked
