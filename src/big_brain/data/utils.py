@@ -128,10 +128,10 @@ def collate_batch(batch: List[Tuple[torch.Tensor, torch.Tensor, int]], p: float 
     L_max = max([item[2] for item in batch])
 
     # allocate tensors
-    Z_pad = torch.zeros((B, L_max+1, 512), dtype=torch.float16)         # L_max+1 because we need to make room for a [CLS] token at the first i
+    Z_pad = torch.zeros((B, L_max+1, 512), dtype=torch.float32)         # L_max+1 because we need to make room for a [CLS] token at the first i
     G_pad = torch.zeros(B, L_max+1, 4, dtype=torch.float32)
     attn_mask = torch.zeros(B, L_max+1, dtype=torch.bool)
-    mdm_labels = torch.zeros_like(Z_pad, dtype=torch.float16)
+    mdm_labels = torch.zeros_like(Z_pad, dtype=torch.float32)
     mdm_mask = torch.zeros(B, L_max+1, dtype=torch.bool)
 
     # collate batch

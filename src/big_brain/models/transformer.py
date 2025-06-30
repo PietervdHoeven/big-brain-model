@@ -35,6 +35,8 @@ class DWIBert(pl.LightningModule):
                  ):
         super().__init__()
         self.save_hyperparameters()
+        self.lr = lr
+        self.weight_decay = weight_decay
 
         # Model architecture
         self.embedder = TokenEmbedder(d_model=d_model)
@@ -125,8 +127,8 @@ class DWIBert(pl.LightningModule):
         # Use AdamW optimizer with weight decay
         optimizer = torch.optim.AdamW(
             self.parameters(),
-            lr=self.hparams.lr,
-            weight_decay=self.hparams.weight_decay
+            lr=self.lr,
+            weight_decay=self.weight_decay
         )
 
         # Calculate the total number of training steps and take a warmup proportion
