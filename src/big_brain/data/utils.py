@@ -8,7 +8,8 @@ from typing import List, Tuple
 
 def create_train_val_split(
         dataset,
-        val_fraction: float = 0.1
+        val_fraction: float = 0.1,
+        seed: int = 42
 ):
     """
     Randomly split `dataset` into train / val subsets and
@@ -24,7 +25,7 @@ def create_train_val_split(
     n_val   = int(np.floor(val_fraction * n_total))
 
     # deterministic shuffle
-    rng      = np.random.default_rng()
+    rng      = np.random.default_rng(seed)
     all_idx  = np.arange(n_total)
     rng.shuffle(all_idx)
 
@@ -53,21 +54,25 @@ def make_ae_sampler(
     Build a sampler that up-weights rare shells but still lets b=1000
     be seen fairly often. We use w_shell[b] = 1 / (k_b ** alpha).
     """
+    print(f"Building sampler for {len(dataset)} samples with alpha={alpha}...")
 
     # 1) Count how many sessions per patient
     patient2sessions = defaultdict(set)
     for p, s in zip(dataset.patients, dataset.sessions):
         patient2sessions[p].add(s)
     S_counts = {p: len(sset) for p, sset in patient2sessions.items()} # |S_p| for each patient p
+    print(f"Number of patients: {len(S_counts)}")
     # e.g. {'sub-0001': 3, 'sub-0002': 2, ...} where 3 means 3 sessions for that patient
 
     # 2) Count how many volumes in each (patient,session)
     sess_keys   = list(zip(dataset.patients, dataset.sessions))
     V_cnt = Counter(sess_keys)    # |V_{p,s}| for each (patient, session) pair
+    print(f"Number of sessions: {len(V_cnt)}")
     # e.g. {('sub-OAS30001', 'ses-d0757'): 26, ('sub-OAS30001', 'ses-d1234'): 120, ...}
 
     # 3) Count how many volumes in each shell
     shell_cnt = Counter(dataset.bvals)  # N_b for each b-value
+    print(f"Number of shells: {len(shell_cnt)}")
     # e.g. {0: 300, 500: 320, 1000: 4500, ...}
 
     # 4) Build the final weights for each sample

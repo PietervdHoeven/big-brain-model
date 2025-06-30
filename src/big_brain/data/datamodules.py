@@ -11,7 +11,7 @@ from big_brain.data.utils   import create_train_val_split, make_ae_sampler, make
 import logging
 log = logging.getLogger(__name__)
 
-class AEDataModule:
+class AEDataModule(pl.LightningDataModule):
     """
     Hydra-friendly wrapper around AEVolumes.
 
@@ -23,8 +23,8 @@ class AEDataModule:
 
     def __init__(
         self,
-        data_dir: str,                        # path to the dir containing all cached and normalised volumes .npz files
-        batch_size: int = 32,                   # batch size for training / validation / testing
+        data_dir: str,                          # path to the dir containing all cached and normalised volumes .npz files
+        batch_size: int = 8,                   # batch size for training / validation / testing
         val_split: float = 0.10,                # fraction of the dataset to use for validation
         test_split: float = 0.10,               # fraction of the dataset to use for testing
         num_workers: int = 8,                   # number of workers for DataLoader (Determine for the slurm script)
@@ -33,7 +33,9 @@ class AEDataModule:
         alpha: float = 0.3,                     # exponent in make_ae_sampler, alpha=0 means no upweighting of rare shells
         sample_fraction: float = 0.0,           # 0.05 → keep 5 % of files | 0.0 → keep all files (default, no sampling)
         enable_aug: bool = True,                # whether to apply augmentation transforms to the training set
+        seed: int = 42                          # seed for reproducibility
     ):
+        super().__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.val_split  = val_split
@@ -44,15 +46,7 @@ class AEDataModule:
         self.alpha = alpha
         self.sample_fraction = sample_fraction
         self.enable_aug = enable_aug
-
-        # will be filled by `setup()`
-        self.train_dataset: Optional[Subset] = None
-        self.val_dataset  : Optional[Subset] = None
-        self.test_dataset : Optional[Subset] = None
-
-        self.train_sampler: Optional[WeightedRandomSampler] = None
-        self.val_sampler  : Optional[WeightedRandomSampler] = None
-        self.test_sampler : Optional[WeightedRandomSampler] = None
+        self.seed = seed
 
     def _three_way_split(self, full_ds: AEVolumes) -> Tuple[Subset, Subset, Subset]:
         """
@@ -71,26 +65,27 @@ class AEDataModule:
         )
         return train_ds, val_ds, test_ds
 
-    # public API expected by training loop (or Lightning)
-    def setup(self):
-        log.info("Setting up AEDataModule...")
-        full_ds = AEVolumes(self.data_dir)
+    def setup(self, stage: Optional[str] = None) -> None:
+        if stage in (None, "fit", "validate", "test"):
 
-        if self.sample_fraction != 0.0:
-            _, full_ds = create_train_val_split(
-                full_ds,
-                val_fraction=self.sample_fraction,
-            )
+            full_dataset = AEVolumes(self.data_dir)
+            print(f"Loaded {len(full_dataset)} samples from {self.data_dir}")
 
-        self.train_dataset, self.val_dataset, self.test_dataset = self._three_way_split(full_ds)
+            if self.sample_fraction != 0.0:
+                _, full_dataset = create_train_val_split(
+                    full_dataset,
+                    val_fraction=self.sample_fraction,
+                    seed=self.seed
+                )
 
-        # Optionally apply transforms to the datasets
-        # if self.enable_aug:
-        #     transform = make_augmentation_transforms()
-        #     self.train_dataset = WithTransforms(self.train_dataset, transform)
+            self.train_dataset, self.val_dataset, self.test_dataset = self._three_way_split(full_dataset)
+            print(f"Split into {len(self.train_dataset)} train, "
+                  f"{len(self.val_dataset)} val, "
+                  f"{len(self.test_dataset)} test samples.")
 
         if self.use_sampler:
             self.sampler = make_ae_sampler(self.train_dataset, alpha=self.alpha)
+            print(f"Created sampler with {len(self.sampler)} samples, alpha={self.alpha}")
         else:
             self.sampler = None
 
@@ -105,25 +100,39 @@ class AEDataModule:
         )
 
     def train_dataloader(self):
-        return self._dl(self.train_dataset, self.train_sampler, shuffle=True)
+        dl = self._dl(self.train_dataset, self.sampler, shuffle=True)
+        print(f"Created train DataLoader with {len(dl.dataset)} samples, "
+              f"batch size {self.batch_size}, "
+              f"{self.num_workers} workers, "
+              f"pin_memory={self.pin_memory}")
+        return self._dl(self.train_dataset, self.sampler, shuffle=True)
 
     def val_dataloader(self):
+        print(f"Created val DataLoader with {len(self.val_dataset)} samples, "
+              f"batch size {self.batch_size}, "
+              f"{self.num_workers} workers, "
+              f"pin_memory={self.pin_memory}")
         return self._dl(self.val_dataset)
 
     def test_dataloader(self):
+        print(f"Created test DataLoader with {len(self.test_dataset)} samples, "
+              f"batch size {self.batch_size}, "
+              f"{self.num_workers} workers, "
+              f"pin_memory={self.pin_memory}")
         return self._dl(self.test_dataset)
 
 
 class TFDataModule(pl.LightningDataModule):
     def __init__(
             self,
-            data_dir,                              # directory where the data is saved
+            data_dir,                               # directory where the data is saved
             batch_size: int = 8,                    # batch size for training / validation
             val_split: float = 0.05,                # fraction of the dataset to use for validation
             num_workers: int = 8,                   # number of workers for DataLoader (Determine for the slurm script)
             pin_memory: bool = True,                # pin_memory=True keep batch in (pinned) RAM so that when you do batch.to("cuda"), this usually speeds up transfers. If you’re only on CPU, it has no effect.
             use_sampler: bool = True,               # whether to use WeightedRandomSampler for training
             sample_fraction: float = 0.0,           # 0.05 → keep 5 % of files | 0.0 → keep all files (default, no sampling)
+            seed: int = 42                          # seed for reproducibility
             ):
         super().__init__()
         self.data_dir = data_dir
@@ -133,11 +142,12 @@ class TFDataModule(pl.LightningDataModule):
         self.pin_memory = pin_memory
         self.use_sampler = use_sampler
         self.sample_fraction = sample_fraction
+        self.seed = seed
 
     def setup(self, stage: Optional[str] = None) -> None:
         """
         Called on every process (GPU) and for every stage.
-        We split the *same* full dataset into train/val once.
+        We split the same full dataset into train/val once.
         """
         if stage in (None, "fit", "validate"):
             full_dataset = TFLatents(self.data_dir)
@@ -146,11 +156,13 @@ class TFDataModule(pl.LightningDataModule):
                 _, full_dataset = create_train_val_split(
                     full_dataset,
                     val_fraction=self.sample_fraction,
+                    seed=self.seed
                 )
             
             self.train_dataset, self.val_dataset = create_train_val_split(
                 full_dataset,
                 val_fraction=self.val_split,
+                seed=self.seed
             )
 
         if self.use_sampler:

@@ -7,19 +7,6 @@ from torchmetrics.regression import MeanAbsoluteError
 
 from big_brain.models.blocks import TokenEmbedder, TiedLinear
 
-
-
-# embedder = TokenEmbedder(d_model=384)
-
-# x = embedder(z, g)
-# print("input z shape:", z.shape)  # Should be [B, L, D]
-# print("input g shape:", g.shape)  # Should be [B, L, 4]
-# print(f"Output shape: {x.shape}")  # Should be [B, L, D]
-
-# h = encoder(x, src_key_padding_mask=attn)
-
-# print(f"Encoder output shape: {h.shape}")  # Should be [B, L, D]
-
 class DWIBert(pl.LightningModule):
     def __init__(
             self,
