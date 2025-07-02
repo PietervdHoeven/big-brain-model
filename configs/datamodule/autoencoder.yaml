@@ -1,12 +1,14 @@
-# configs/datamodule.yaml
+# configs/datamodule/autoencoder.yaml
 
-_target_: big_brain.data.datamodule.AEDataModule
-cache_root: /home/spieterman/dev/big-brain-model/data/encoder
-batch_size: 6               # batch size for training / validation / testing
-val_split: 0.10             # fraction of the dataset to use for validation
-test_split: 0.10            # fraction of the dataset to use for testing
-num_workers: 8              # number of workers for DataLoader (Determine for the slurm script)
-pin_memory: true            # pin_memory=True keep batch in (pinned) RAM so that when you do batch.to("cuda"), this usually speeds up transfers. If you’re only on CPU, it has no effect.
-use_weighted_sampler: true  # whether to use WeightedRandomSampler for training / validation / testing
-alpha: 0.3                  # exponent in make_balanced_sampler, alpha=0 means no upweighting of rare shells
-sample_fraction: 0.0        # fraction of the dataset to sample, None means use the full dataset
+_target_: big_brain.data.datamodules.AEDataModule
+data_dir: /home/spieterman/dev/big-brain-model/data/autoencoder
+batch_size: 6
+val_split: 0.05
+test_split: 0.05
+num_workers: 12
+pin_memory: true
+use_sampler: true
+alpha: 0.3
+sample_fraction: 0.0
+enable_aug: false
+seed: ${seed}

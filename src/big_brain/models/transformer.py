@@ -90,9 +90,9 @@ class DWIBert(pl.LightningModule):
         mae = self.mae(z_pred[mdm_mask], labels[mdm_mask])
 
         # Log the loss and metrics
-        self.log(f"{stage}/loss", loss, on_step=False, on_epoch=True,
+        self.log(f"{stage}_loss", loss, on_step=False, on_epoch=True,
                  prog_bar=True, logger=True)
-        self.log(f"{stage}/mae", mae, on_step=False, on_epoch=True,
+        self.log(f"{stage}_mae", mae, on_step=False, on_epoch=True,
                  prog_bar=True, logger=True)
         
         return loss

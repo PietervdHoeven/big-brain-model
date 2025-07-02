@@ -1,0 +1,11 @@
+# configs/datamodule/transformer.yaml
+
+_target_: big_brain.data.datamodules.TFDataModule
+data_dir: /home/spieterman/dev/big-brain-model/data/transformer
+batch_size: 8
+val_split: 0.05
+num_workers: 12
+pin_memory: true
+use_sampler: true
+sample_fraction: 0.0
+seed: ${seed}

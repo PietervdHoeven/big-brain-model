@@ -66,7 +66,7 @@ class AutoEncoder(pl.LightningModule):
         # Perform a single training step.
         _, _, loss = self._step(batch, 'train')
         # Log the training loss
-        self.log('train/loss', loss, on_step=True, on_epoch=True,
+        self.log('train_loss', loss, on_step=True, on_epoch=True,
                  prog_bar=True, logger=True)
         # Return the loss for the optimizer
         return loss
@@ -76,10 +76,10 @@ class AutoEncoder(pl.LightningModule):
         x, y, loss = self._step(batch, 'val')
         ssim = self.ssim(y, x)
         # Log the validation loss
-        self.log('val/loss', loss, on_step=False, on_epoch=True,
+        self.log('val_loss', loss, on_step=False, on_epoch=True,
                  prog_bar=True, logger=True)
         # Log the SSIM metric
-        self.log('val/ssim', ssim, on_step=False, on_epoch=True,
+        self.log('val_ssim', ssim, on_step=False, on_epoch=True,
                  prog_bar=True, logger=True)
         # Return the loss for validation
         return loss
@@ -89,10 +89,10 @@ class AutoEncoder(pl.LightningModule):
         x, y, loss = self._step(batch, 'test')
         ssim = self.ssim(y, x)
         # Log the test loss
-        self.log('test/loss', loss, on_step=False, on_epoch=True,
+        self.log('test_loss', loss, on_step=False, on_epoch=True,
                  prog_bar=True, logger=True)
         # Log the SSIM metric for testing
-        self.log('test/ssim', ssim, on_step=False, on_epoch=True,
+        self.log('test_ssim', ssim, on_step=False, on_epoch=True,
                  prog_bar=True, logger=True)
         # Return the loss for testing
         return loss

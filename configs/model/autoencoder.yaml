@@ -1,11 +1,9 @@
-#configs/model/custom_ae.yaml
+# configs/model/autoencoder.yaml
 
-_target_: big_brain.models.autoencoders.AutoEncoder
-encoder:
-  _target_: big_brain.models.encoders.Encoder
-  norm: group
-  activation: gelu
-decoder:
-  _target_: big_brain.models.decoders.Decoder
-  norm: group
-  activation: gelu
+_target_: big_brain.models.autoencoder.AutoEncoder
+norm: group
+activation: gelu
+lr: 0.001
+weight_decay: 1e-05
+norm: group
+

@@ -1,14 +1,13 @@
 # configs/config.yaml
 
 seed: 42
-max_epochs: 200
+test: false
 
 defaults:
   - _self_
-  - model: autoencoder
-  - loss: mse
-  - datamodule: autoencoder
-  - optimiser: adamw
-  - scheduler: warmup_cosine
-  - stopper: early
-
+  - datamodule: transformer
+  - model: transformer
+  - trainer: default
+  - logger: tensorboard
+  - early_stopping: on_loss
+  - checkpoint: on_loss

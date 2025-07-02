@@ -1,6 +1,0 @@
-# configs/scheduler/plateau.yaml
-_target_: big_brain.training.schedulers.get_plateau
-mode:      min
-factor:    0.5
-patience:  3
-min_lr:    1e-6

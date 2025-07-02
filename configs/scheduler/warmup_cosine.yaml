@@ -1,5 +1,0 @@
-# configs/scheduler/warmup_cosine.yaml
-_target_: big_brain.training.schedulers.get_warmup_cosine
-warmup_epochs: 5
-max_epochs:    ${max_epochs}
-eta_min:       1e-6

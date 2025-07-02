@@ -1,0 +1,10 @@
+# configs/callbacks/checkpoint.yaml
+
+_target_: pytorch_lightning.callbacks.ModelCheckpoint
+dirpath: ${hydra:runtime.output_dir}/checkpoints
+filename: epoch={epoch:03d}-val_loss={val_loss:.4f}
+monitor: val_loss
+mode: min
+save_top_k: 3
+save_last: true          # 'link' if local FS
+every_n_epochs: 1

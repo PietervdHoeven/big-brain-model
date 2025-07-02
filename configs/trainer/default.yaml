@@ -1,0 +1,8 @@
+# configs/trainer/default.yaml
+
+_target_: pytorch_lightning.Trainer
+accelerator: gpu
+devices: 1
+max_epochs: 70
+precision: 16-mixed
+enable_progress_bar: true
