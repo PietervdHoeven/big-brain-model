@@ -14,6 +14,7 @@ def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))
 
     # set random seed for reproducibility
+    print(f"Setting random seed to {cfg.seed}")
     seed_everything(cfg.seed, workers=True)
 
     # set logger

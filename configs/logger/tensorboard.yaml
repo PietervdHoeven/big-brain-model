@@ -1,4 +1,6 @@
 # configs/logger/tensorboard.yaml
 
 _target_: pytorch_lightning.loggers.TensorBoardLogger
-save_dir: ${hydra:runtime.output_dir}/tensorboard
+save_dir: ${hydra:runtime.output_dir}/
+name: ""
+version: ""

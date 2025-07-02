@@ -5,5 +5,5 @@ _target_: pytorch_lightning.callbacks.EarlyStopping
 monitor: val_loss      # metric logged with self.log(...) in def validation_step()
 mode: min              # "min" for loss, "max" for accuracy
 patience: 5            # stop after 5 “no-improvement” epochs
-min_delta: 0.0         # minimum change to qualify as an improvement
+min_delta: 0.0005      # minimum change to qualify as an improvement
 verbose: true          # set true for console messages
