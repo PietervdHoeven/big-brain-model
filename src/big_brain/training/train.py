@@ -25,6 +25,7 @@ def main(cfg: DictConfig):
     checkpoint = instantiate(cfg.checkpoint)
     callbacks = [earlystopping, checkpoint]
 
+    # Instantiate the Trainer
     trainer = Trainer()
 
     # instantiate the model
@@ -40,7 +41,7 @@ def main(cfg: DictConfig):
     trainer.fit(model=model, datamodule=datamodule)
 
     # Test (optional)
-    if cfg.trainer.test:
+    if cfg.test:
         trainer.test(model=model, datamodule=datamodule)
 
 if __name__ == "__main__":
