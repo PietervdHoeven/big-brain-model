@@ -1,12 +1,12 @@
 # ae_data/datamodule.py
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable, Any
 
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, Dataset, WeightedRandomSampler
 import pytorch_lightning as pl
 
 from big_brain.data.datasets import AEVolumes, TFLatents
-from big_brain.data.utils   import create_train_val_split, make_ae_sampler, make_tf_sampler, collate_batch
+from big_brain.data.utils   import create_train_val_split, make_ae_sampler, make_tf_sampler, make_probe_sampler, collate_mdm, collate_probe
 
 import logging
 log = logging.getLogger(__name__)
@@ -125,14 +125,15 @@ class AEDataModule(pl.LightningDataModule):
 class TFDataModule(pl.LightningDataModule):
     def __init__(
             self,
-            data_dir,                               # directory where the data is saved
-            batch_size: int = 8,                    # batch size for training / validation
-            val_split: float = 0.05,                # fraction of the dataset to use for validation
-            num_workers: int = 8,                   # number of workers for DataLoader (Determine for the slurm script)
-            pin_memory: bool = True,                # pin_memory=True keep batch in (pinned) RAM so that when you do batch.to("cuda"), this usually speeds up transfers. If you’re only on CPU, it has no effect.
-            use_sampler: bool = True,               # whether to use WeightedRandomSampler for training
-            sample_fraction: float = 0.0,           # 0.05 → keep 5 % of files | 0.0 → keep all files (default, no sampling)
-            seed: int = 42                          # seed for reproducibility
+            data_dir,                                                       # directory where the data is saved
+            batch_size: int = 8,                                            # batch size for training / validation
+            val_split: float = 0.05,                                        # fraction of the dataset to use for validation
+            num_workers: int = 8,                                           # number of workers for DataLoader (Determine for the slurm script)
+            pin_memory: bool = True,                                        # pin_memory=True keep batch in (pinned) RAM so that when you do batch.to("cuda"), this usually speeds up transfers. If you’re only on CPU, it has no effect.
+            sampler_fn: Callable[[Dataset], WeightedRandomSampler] = None,  # Function that returns a sampler for the training dataset
+            collate_fn: Callable[[list[Any]], Any] = collate_mdm,           # Function to collate the batch
+            sample_fraction: float = 0.0,                                   # 0.05 → keep 5 % of files | 0.0 → keep all files (default, no sampling)
+            seed: int = 42                                                  # seed for reproducibility
             ):
         super().__init__()
         self.data_dir = data_dir
@@ -140,7 +141,8 @@ class TFDataModule(pl.LightningDataModule):
         self.val_split = val_split
         self.num_workers = num_workers
         self.pin_memory = pin_memory
-        self.use_sampler = use_sampler
+        self.sampler_fn = sampler_fn
+        self.collate_fn = collate_fn
         self.sample_fraction = sample_fraction
         self.seed = seed
 
@@ -165,8 +167,8 @@ class TFDataModule(pl.LightningDataModule):
                 seed=self.seed
             )
 
-        if self.use_sampler:
-            self.sampler = make_tf_sampler(dataset=self.train_dataset)
+        if self.sampler_fn is not None:
+            self.sampler = self.sampler_fn(dataset=self.train_dataset)
         else:
             self.sampler = None
 
@@ -178,7 +180,7 @@ class TFDataModule(pl.LightningDataModule):
             shuffle=(shuffle and sampler is None),
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
-            collate_fn=collate_batch
+            collate_fn=self.collate_fn
         )
 
     def train_dataloader(self):
@@ -186,6 +188,7 @@ class TFDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         return self._dl(self.val_dataset)
+
 
 
 

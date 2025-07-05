@@ -44,6 +44,8 @@ def make_subset(dataset, idxs):
         sub.bvals = [dataset.bvals[i] for i in idxs]
     if hasattr(dataset, 'lengths'):
         sub.lengths = [dataset.lengths[i] for i in idxs]
+    if hasattr(dataset, 'labels'):
+        sub.labels = [dataset.labels[i] for i in idxs]
     return sub
 
 
@@ -93,7 +95,7 @@ def make_ae_sampler(
     return sampler
 
 
-def make_tf_sampler(dataset):
+def make_mdm_sampler(dataset):
     # 1) Count how many sessions per patient
     patient2sessions = defaultdict(set)
     for p, s in zip(dataset.patients, dataset.sessions):
@@ -104,6 +106,22 @@ def make_tf_sampler(dataset):
     weights = [1.0 / S_counts[p] for p in dataset.patients]
 
     # 3) Create Pytorch wighted sampler
+    sampler = WeightedRandomSampler(
+        weights=torch.DoubleTensor(weights),
+        num_samples=len(weights),
+        replacement=True
+    )
+    return sampler
+
+
+def make_finetuning_sampler(dataset):
+    # 1) Count the distribution of labels
+    label_counts = Counter(dataset.labels)
+
+    # 2) Build weights
+    weights = [1.0 / label_counts[label] for label in dataset.labels]
+
+    # 3) Create Pytorch weighted sampler
     sampler = WeightedRandomSampler(
         weights=torch.DoubleTensor(weights),
         num_samples=len(weights),
@@ -127,7 +145,7 @@ def make_augmentation_transforms():
     ])
 
 
-def collate_batch(batch: List[Tuple[torch.Tensor, torch.Tensor, int]], p: float = 0.15):
+def collate_mdm(batch: List[Tuple[torch.Tensor, torch.Tensor, int]], p: float = 0.15):
     # Get metadata from batch
     B = len(batch)
     L_max = max([item[2] for item in batch])
@@ -162,3 +180,38 @@ def collate_batch(batch: List[Tuple[torch.Tensor, torch.Tensor, int]], p: float 
 
     return Z_pad, G_pad, attn_mask, mdm_labels, mdm_mask
 
+
+def collate_finetuning(batch: List[Tuple[torch.Tensor, torch.Tensor, int, torch.Tensor]]):
+    """
+    Collate function for finetuning datasets.
+    It pads the z and g tensors to the maximum length in the batch.
+    """
+    B = len(batch)
+    L_max = max([item[2] for item in batch])
+
+    # allocate tensors
+    Z_pad = torch.zeros((B, L_max+1, 512), dtype=torch.float32)     # [B, L_max+1, 512]
+    G_pad = torch.zeros((B, L_max+1, 4), dtype=torch.float32)       # [B, L_max+1, 4]
+    attn_mask = torch.zeros(B, L_max+1, dtype=torch.bool)           # [B, L_max+1]
+    task_labels = torch.zeros(B, dtype=torch.float32)               # [B] for classification/regression labels
+
+    # collate batch
+    for b, (z, g, L, y) in enumerate(batch):
+        # Prepend room for [cls] token (tensor is already 0)
+        Z_pad[b,1:L+1] = z
+        G_pad[b,1:L+1] = g
+        attn_mask[b,0:L+1] = True
+        task_labels[b] = y
+
+    return Z_pad, G_pad, attn_mask, task_labels
+    
+
+
+MAPPERS = {
+    "gender": {"male": 0, "female": 1},
+    "handedness": {"right": 0, "left": 1, "both": 2, "unknown": 3},
+    "bin_cdr": {"0.": 0, "0.5": 1, "1.": 1, "2.": 1},
+    "tri_cdr": {"0.": 0, "0.5": 1, "1.": 2, "2.": 2},
+    "ord_cdr": {"0.": 0, "0.5": 1, "1.": 2, "2.": 3},
+    "age": None  # Age is a continuous variable, so we don't need to map it
+}

@@ -3,6 +3,9 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from pathlib import Path
+import pandas as pd
+
+from big_brain.data.utils import MAPPERS
 
 
 class AEVolumes(Dataset):
@@ -78,3 +81,40 @@ class TFLatents(Dataset):
         # number of volumes in one session
         length = self.lengths[idx]
         return z, g, length
+    
+
+class TFLabeledLatents(TFLatents):
+    """
+    Wrapper around TFLatents that adds labels for classification/regression.
+    """
+    def __init__(
+            self,
+            data_root: str = "data",                                # root directory where the latents are stored
+            labels_path: str = "data/labels/labels.parquet",        # dictionary mapping (patient, session) to label
+            column: str = "cdr",                                    # patient, session, cdr, gender, handedness, age
+            task: str = "bin_cdr"                                   # task to perform: bin_cdr, tri_cdr, ord_cdr, gender, handedness, age
+    ):
+        super().__init__(data_root)                     # Initialize the base class. So we get the files, patients, sessions, and lengths.
+        self.labels_df = pd.read_parquet(labels_path)   # Load the labels DataFrame from a parquet file.
+
+        # Extract labels for each patient-session pair from the DataFrame
+        self.labels = []                                # List to store labels for each (patient, session) pair.
+        for p, s in zip(self.patients, self.sessions):  
+            label = self.labels_df.loc[(self.labels_df['patient'] == p) & (self.labels_df['session'] == s), column]
+            self.labels.append(label)                   # We build a parallel list of labels for each patient and session.
+        
+        self.mapper = MAPPERS[task]                     # A mapper function or dict to transform labels if needed
+    
+    def __getitem__(self, idx):
+        # Get the latent vector and gradient info from the base class
+        z, g, length = super().__getitem__(idx)
+
+        # Get the label for the current index
+        label = self.labels[idx]
+        if self.mapper is not None:
+            label = self.mapper[label]  # map it into torch tensor format
+            y = torch.tensor(label, dtype=torch.long)  # Convert to tensor (typically long for classification)
+        else:
+            y = torch.tensor(label, dtype=torch.float32)  # Default to float if no mapping is provided  (this is useful for regression tasks)
+        
+        return z, g, length, y

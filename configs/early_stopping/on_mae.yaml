@@ -1,9 +1,9 @@
-# configs/early_stopping/on_loss.yaml
+# configs/early_stopping/on_mae.yaml
 
 _target_: pytorch_lightning.callbacks.EarlyStopping
 
-monitor: val_loss      # metric logged with self.log(...) in def validation_step()
+monitor: val_mae       # metric logged with self.log(...) in def validation_step()
 mode: min              # "min" for loss, "max" for accuracy
 patience: 8            # stop after 5 “no-improvement” epochs
-min_delta: 0.0001      # minimum change to qualify as an improvement
+min_delta: 0.01      # minimum change to qualify as an improvement
 verbose: true          # set true for console messages

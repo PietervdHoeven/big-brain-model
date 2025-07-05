@@ -7,7 +7,7 @@ from torchmetrics import Accuracy, F1Score, Precision, Recall, AUROC, MeanAbsolu
 
 from big_brain.models.transformer import DWIBert
 
-class DWIBertClassifier(pl.LightningModule):
+class DWIBertFinetuner(pl.LightningModule):
     def __init__(
             self,
             # Model parameters
@@ -150,3 +150,18 @@ class DWIBertClassifier(pl.LightningModule):
             torch.Tensor: The loss value for the step.
         """
         return self._step(batch, 'val')
+    
+    def configure_optimizers(self):
+        """
+        Configure the optimizer and the learning rate scheduler for the model.
+        Returns:
+            torch.optim.Optimizer: The optimizer for the model.
+        """
+        # Use AdamW optimizer with weight decay
+        optimizer = torch.optim.AdamW(
+            self.parameters(),
+            lr=self.hparams.lr_classifier,
+            weight_decay=1e-2
+        )
+
+        return optimizer

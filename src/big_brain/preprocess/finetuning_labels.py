@@ -168,8 +168,19 @@ final_df = final_df.rename(columns={
     "age_at_scan": "age",
 })
 
+# Fix NaN values in the handedness column
+final_df["handedness"] = final_df["handedness"].fillna("right")
+
 # print the final DataFrame for verification
 print(final_df.head())
 
-# 
+# print all rows with NaN values (final check)
+print(final_df[final_df.isna().any(axis=1)].sort_values("patient"))
 
+# save the final DataFrame to a parquet file
+final_df.to_parquet("data/labels/labels.parquet", index=False)
+
+# print the unique values of the cdr, gender, and handedness columns
+print("Unique CDR values:", final_df["cdr"].unique())
+print("Unique gender values:", final_df["gender"].unique())
+print("Unique handedness values:", final_df["handedness"].unique())
