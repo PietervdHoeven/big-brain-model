@@ -5,8 +5,8 @@ from typing import Optional, Tuple, Callable, Any
 from torch.utils.data import DataLoader, Subset, Dataset, WeightedRandomSampler
 import pytorch_lightning as pl
 
-from big_brain.data.datasets import AEVolumes, TFLatents
-from big_brain.data.utils   import create_train_val_split, make_ae_sampler, make_tf_sampler, make_probe_sampler, collate_mdm, collate_probe
+from big_brain.data.datasets import AEVolumes, TFLatents, TFLabeledLatents
+from big_brain.data.utils   import create_train_val_split, make_ae_sampler, make_mdm_sampler, make_finetuner_sampler, collate_mdm, collate_finetuner
 
 import logging
 log = logging.getLogger(__name__)
@@ -126,12 +126,11 @@ class TFDataModule(pl.LightningDataModule):
     def __init__(
             self,
             data_dir,                                                       # directory where the data is saved
-            batch_size: int = 8,                                            # batch size for training / validation
+            batch_size: int = 16,                                           # batch size for training / validation
             val_split: float = 0.05,                                        # fraction of the dataset to use for validation
-            num_workers: int = 8,                                           # number of workers for DataLoader (Determine for the slurm script)
+            num_workers: int = 12,                                          # number of workers for DataLoader (Determine for the slurm script)
             pin_memory: bool = True,                                        # pin_memory=True keep batch in (pinned) RAM so that when you do batch.to("cuda"), this usually speeds up transfers. If you’re only on CPU, it has no effect.
-            sampler_fn: Callable[[Dataset], WeightedRandomSampler] = None,  # Function that returns a sampler for the training dataset
-            collate_fn: Callable[[list[Any]], Any] = collate_mdm,           # Function to collate the batch
+            use_sampler: bool = True,                                   # whether to use WeightedRandomSampler for training
             sample_fraction: float = 0.0,                                   # 0.05 → keep 5 % of files | 0.0 → keep all files (default, no sampling)
             seed: int = 42                                                  # seed for reproducibility
             ):
@@ -141,8 +140,7 @@ class TFDataModule(pl.LightningDataModule):
         self.val_split = val_split
         self.num_workers = num_workers
         self.pin_memory = pin_memory
-        self.sampler_fn = sampler_fn
-        self.collate_fn = collate_fn
+        self.use_sampler = use_sampler
         self.sample_fraction = sample_fraction
         self.seed = seed
 
@@ -152,6 +150,7 @@ class TFDataModule(pl.LightningDataModule):
         We split the same full dataset into train/val once.
         """
         if stage in (None, "fit", "validate"):
+
             full_dataset = TFLatents(self.data_dir)
 
             if self.sample_fraction != 0.0:
@@ -167,8 +166,8 @@ class TFDataModule(pl.LightningDataModule):
                 seed=self.seed
             )
 
-        if self.sampler_fn is not None:
-            self.sampler = self.sampler_fn(dataset=self.train_dataset)
+        if self.use_sampler:
+            self.sampler = make_mdm_sampler(dataset=self.train_dataset)
         else:
             self.sampler = None
 
@@ -180,7 +179,7 @@ class TFDataModule(pl.LightningDataModule):
             shuffle=(shuffle and sampler is None),
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
-            collate_fn=self.collate_fn
+            collate_fn=collate_mdm
         )
 
     def train_dataloader(self):
@@ -188,6 +187,88 @@ class TFDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         return self._dl(self.val_dataset)
+
+
+class FinetunerDataModule(pl.LightningDataModule):
+    """
+    DataModule for finetuning tasks.
+    - Uses TFLabeledLatents for labeled data.
+    - Splits into train / val using create_train_val_split.
+    - Optionally builds WeightedRandomSamplers with your make_finetuner_sampler.
+    - Produces PyTorch DataLoaders that the training loop (or Lightning Trainer) can consume directly.
+    """
+
+    def __init__(
+        self,
+        data_dir: str,                           # path to the dir containing all cached and normalised latents .npz files
+        batch_size: int = 16,                    # batch size for training / validation
+        val_split: float = 0.10,                 # fraction of the dataset to use for validation
+        num_workers: int = 12,                   # number of workers for DataLoader (Determine for the slurm script)
+        pin_memory: bool = True,                 # pin_memory=True keep batch in (pinned) RAM so that when you do batch.to("cuda"), this usually speeds up transfers. If you’re only on CPU, it has no effect.
+        use_sampler: bool = True,                # whether to use WeightedRandomSampler for training
+        sample_fraction: float = 0.0,            # 0.05 → keep 5 % of files | 0.0 → keep all files (default, no sampling)
+        task: str = "bin_cdr",                   # task to perform: bin_cdr, tri_cdr, ord_c
+        seed: int = 42                        # seed for reproducibility
+    ):
+        super().__init__()
+        self.data_dir = data_dir
+        self.batch_size = batch_size
+        self.val_split = val_split
+        self.num_workers = num_workers
+        self.pin_memory = pin_memory
+        self.use_sampler = use_sampler
+        self.sample_fraction = sample_fraction
+        self.task = task
+        self.seed = seed
+
+    def setup(self, stage: Optional[str] = None) -> None:
+        """
+        Called on every process (GPU) and for every stage.
+        We split the same full dataset into train/val once.
+        """
+        if stage in (None, "fit", "validate"):
+
+            full_dataset = TFLabeledLatents(
+                data_root=self.data_dir,
+                task=self.task
+            )
+
+            if self.sample_fraction != 0.0:
+                _, full_dataset = create_train_val_split(
+                    full_dataset,
+                    val_fraction=self.sample_fraction,
+                    seed=self.seed
+                )
+
+            self.train_dataset, self.val_dataset = create_train_val_split(
+                full_dataset,
+                val_fraction=self.val_split,
+                seed=self.seed
+            )
+
+        if self.use_sampler:
+            self.sampler = make_finetuner_sampler(self.train_dataset)
+        else:
+            self.sampler = None
+
+    def _dl(self, dataset, sampler=None, shuffle=False):
+        return DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            sampler=sampler,
+            shuffle=(shuffle and sampler is None),
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
+            collate_fn=collate_finetuner
+        )
+    
+    def train_dataloader(self):
+        return self._dl(self.train_dataset, self.sampler, shuffle=True)
+    
+    def val_dataloader(self):
+        return self._dl(self.val_dataset)
+
+
 
 
 

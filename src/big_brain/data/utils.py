@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import Subset, WeightedRandomSampler
 from collections import defaultdict, Counter
 import torchio as tio
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 
 
 def create_train_val_split(
@@ -114,7 +114,7 @@ def make_mdm_sampler(dataset):
     return sampler
 
 
-def make_finetuning_sampler(dataset):
+def make_finetuner_sampler(dataset):
     # 1) Count the distribution of labels
     label_counts = Counter(dataset.labels)
 
@@ -181,7 +181,7 @@ def collate_mdm(batch: List[Tuple[torch.Tensor, torch.Tensor, int]], p: float = 
     return Z_pad, G_pad, attn_mask, mdm_labels, mdm_mask
 
 
-def collate_finetuning(batch: List[Tuple[torch.Tensor, torch.Tensor, int, torch.Tensor]]):
+def collate_finetuner(batch: List[Tuple[torch.Tensor, torch.Tensor, int, torch.Tensor]]):
     """
     Collate function for finetuning datasets.
     It pads the z and g tensors to the maximum length in the batch.
@@ -193,7 +193,7 @@ def collate_finetuning(batch: List[Tuple[torch.Tensor, torch.Tensor, int, torch.
     Z_pad = torch.zeros((B, L_max+1, 512), dtype=torch.float32)     # [B, L_max+1, 512]
     G_pad = torch.zeros((B, L_max+1, 4), dtype=torch.float32)       # [B, L_max+1, 4]
     attn_mask = torch.zeros(B, L_max+1, dtype=torch.bool)           # [B, L_max+1]
-    task_labels = torch.zeros(B, dtype=torch.float32)               # [B] for classification/regression labels
+    ys = []
 
     # collate batch
     for b, (z, g, L, y) in enumerate(batch):
@@ -201,17 +201,22 @@ def collate_finetuning(batch: List[Tuple[torch.Tensor, torch.Tensor, int, torch.
         Z_pad[b,1:L+1] = z
         G_pad[b,1:L+1] = g
         attn_mask[b,0:L+1] = True
-        task_labels[b] = y
+        ys.append(y)
 
-    return Z_pad, G_pad, attn_mask, task_labels
+    Y = torch.stack(ys)
+    return Z_pad, G_pad, attn_mask, Y
     
 
 
-MAPPERS = {
-    "gender": {"male": 0, "female": 1},
+MAPPERS: dict[str, dict | None] = {
+    "gender":     {"male": 0, "female": 1},
     "handedness": {"right": 0, "left": 1, "both": 2, "unknown": 3},
-    "bin_cdr": {"0.": 0, "0.5": 1, "1.": 1, "2.": 1},
-    "tri_cdr": {"0.": 0, "0.5": 1, "1.": 2, "2.": 2},
-    "ord_cdr": {"0.": 0, "0.5": 1, "1.": 2, "2.": 3},
-    "age": None  # Age is a continuous variable, so we don't need to map it
+
+    # CDR variants
+    "bin_cdr": {0.0: 0, 0.5: 1, 1.0: 1, 2.0: 1, 3.0: 1},
+    "tri_cdr": {0.0: 0, 0.5: 1, 1.0: 2, 2.0: 2, 3.0: 2},
+    "ord_cdr": {0.0: 0, 0.5: 1, 1.0: 2, 2.0: 3, 3.0: 4},
+
+    # Identity / regression
+    "age": None,
 }

@@ -12,8 +12,8 @@ class DWIBertFinetuner(pl.LightningModule):
             self,
             # Model parameters
             bert_ckpt: str = "checkpoints/transformer_382_v1",
-            task: str = "binary",  # "binary", "multiclass" or "regression"
-            num_classes: int = 1,   # Number of classes for classification or 1 for regression
+            task: str = "bin_cdr",  # "binary", "multiclass" or "regression"
+            num_logits: int = 1,   # Number of classes for classification or 1 for regression
             # Training parameters
             freeze_depth: str | int = "all",  # "all" or an integer for the number of layers to freeze
             lr_classifier: float = 1e-3,
@@ -39,11 +39,11 @@ class DWIBertFinetuner(pl.LightningModule):
                     p.requires_grad = True
         
         # Classifier head
-        self.classifier = nn.Linear(self.transformer.hparams.d_model, num_classes)
+        self.classifier = nn.Linear(self.transformer.hparams.d_model, num_logits)
 
         # Metrics
         self.task = task
-        if task == "binary":
+        if task in ["bin_cdr", "gender"]:
                     self.loss_fn = nn.BCEWithLogitsLoss()
                     self.metrics = nn.ModuleDict({
                         "auc"      : AUROC(task="binary"),
@@ -52,14 +52,14 @@ class DWIBertFinetuner(pl.LightningModule):
                         "precision": Precision(task="binary"),
                         "recall"   : Recall(task="binary"),
                     })
-        elif task == "multiclass":
+        elif task in ["handedness", "tri_cdr"]:
             self.loss_fn = nn.CrossEntropyLoss()
             self.metrics = nn.ModuleDict({
-                "accuracy" : Accuracy(task="multiclass", num_classes=num_classes),
-                "f1"       : F1Score(task="multiclass",   num_classes=num_classes, average="macro"),
-                "precision": Precision(task="multiclass", num_classes=num_classes, average="macro"),
-                "recall"   : Recall(task="multiclass",    num_classes=num_classes, average="macro"),
-                "auc"      : AUROC(task="multiclass",     num_classes=num_classes, average="macro"),
+                "accuracy" : Accuracy(task="multiclass", num_classes=3),
+                "f1"       : F1Score(task="multiclass",   num_classes=3, average="macro"),
+                "precision": Precision(task="multiclass", num_classes=3, average="macro"),
+                "recall"   : Recall(task="multiclass",    num_classes=3, average="macro"),
+                "auc"      : AUROC(task="multiclass",     num_classes=3, average="macro"),
             })
         else:  # regression
             self.loss_fn = nn.MSELoss()
@@ -107,10 +107,10 @@ class DWIBertFinetuner(pl.LightningModule):
         logits = self.forward(z, g, attn_mask).squeeze(-1)
 
         # Compute loss for two cases (classification or regression):
-        if self.task == "binary":
+        if self.task in ["bin_cdr", "gender"]:
                 loss = self.loss_fn(logits.squeeze(), y.float())
                 y_pred = torch.sigmoid(logits)          # probabilities
-        elif self.task == "multiclass":
+        elif self.task in ["handedness", "tri_cdr"]:
             loss = self.loss_fn(logits, y.long())
             y_pred = torch.softmax(logits, dim=1)       # probs per class
         else:  # regression

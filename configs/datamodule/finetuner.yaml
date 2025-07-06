@@ -1,0 +1,12 @@
+# configs/datamodule/finetuner.yaml
+
+_target_: big_brain.data.datamodules.FinetunerDataModule
+data_dir: /home/spieterman/dev/big-brain-model/data/transformer
+batch_size: 16
+val_split: 0.10
+num_workers: 12
+task: ${task}
+pin_memory: true
+use_sampler: true
+sample_fraction: 0.0
+seed: ${seed}

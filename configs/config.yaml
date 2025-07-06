@@ -2,11 +2,12 @@
 
 seed: 42
 test: false
+task: tri_cdr
 
 defaults:
   - _self_
-  - datamodule: transformer
-  - model: transformer
+  - datamodule: finetuner
+  - model: multiclass_head
   - trainer: default
   - logger: tensorboard
   - early_stopping: on_loss

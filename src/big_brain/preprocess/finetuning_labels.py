@@ -171,6 +171,10 @@ final_df = final_df.rename(columns={
 # Fix NaN values in the handedness column
 final_df["handedness"] = final_df["handedness"].fillna("right")
 
+# prepend sub- and ses- to patient and session columns
+final_df["patient"] = "sub-" + final_df["patient"]
+final_df["session"] = "ses-" + final_df["session"]
+
 # print the final DataFrame for verification
 print(final_df.head())
 

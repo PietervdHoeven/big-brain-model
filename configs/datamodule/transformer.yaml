@@ -2,10 +2,12 @@
 
 _target_: big_brain.data.datamodules.TFDataModule
 data_dir: /home/spieterman/dev/big-brain-model/data/transformer
-batch_size: 8
+batch_size: 16
 val_split: 0.05
 num_workers: 12
+sampler_fn: make_mdm_sampler
+collate_fn: collate_mdm
+task: pretraining
 pin_memory: true
-use_sampler: true
 sample_fraction: 0.0
 seed: ${seed}
