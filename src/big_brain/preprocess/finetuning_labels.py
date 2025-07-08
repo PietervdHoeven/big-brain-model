@@ -192,6 +192,22 @@ print("Gender value counts:\n", final_df["gender"].value_counts())
 print("Unique handedness values:", final_df["handedness"].unique())
 print("Handedness value counts:\n", final_df["handedness"].value_counts())
 
+# plot the distribution of the age column
+import matplotlib.pyplot as plt
+plt.figure(figsize=(10, 6))
+final_df["age"].hist(bins=30, edgecolor='black')
+plt.title("Age Distribution")
+plt.xlabel("Age")
+plt.ylabel("Frequency")
+plt.grid(False)
+
+# save the plot in outputs/figures (mkdir if it doesn't exist)
+output_dir = Path("outputs/figures")
+output_dir.mkdir(parents=True, exist_ok=True)
+plt.tight_layout()
+plt.savefig(output_dir / "age_distribution.png")
+
+
 
 """
         patient    session  cdr  gender handedness        age

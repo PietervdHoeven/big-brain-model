@@ -209,16 +209,27 @@ class DWIBertFinetuner(pl.LightningModule):
         """
         log the confusion matrix at the end of the validation epoch.
         """
-        if self.cm_metric is None:
-            return
-        
-        # Plot the confusion matrix
-        fig, ax = self.cm_metric.plot(labels=self.class_names, add_text=True, cmap="Blues")
-        self.logger.experiment.add_figure("val_confusion_matrix", fig, self.current_epoch)
+        if self.cm_metric is not None:
+            # Plot the confusion matrix
+            fig, ax = self.cm_metric.plot(labels=self.class_names, add_text=True, cmap="Blues")
+            self.logger.experiment.add_figure("val_confusion_matrix", fig, self.current_epoch)
 
-        # clean up
-        plt.close(fig)
-        self.cm_metric.reset()
+            # clean up
+            plt.close(fig)
+            self.cm_metric.reset()
+        
+        if self.task == "regression":
+            # Plot the spread of predictions vs. targets for regression
+            preds = torch.cat([self.metrics["mae"].preds], dim=0) if hasattr(self.metrics["mae"], "preds") else None
+            targets = torch.cat([self.metrics["mae"].target], dim=0) if hasattr(self.metrics["mae"], "target") else None
+            if preds is not None and targets is not None:
+                fig, ax = plt.subplots()
+                ax.scatter(targets.cpu().numpy(), preds.cpu().numpy(), alpha=0.5)
+                ax.set_xlabel("True Values")
+                ax.set_ylabel("Predicted Values")
+                ax.set_title("Prediction Spread")
+                self.logger.experiment.add_figure("val_prediction_spread", fig, self.current_epoch)
+                plt.close(fig)
 
 
     def on_test_epoch_end(self):
