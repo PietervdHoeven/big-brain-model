@@ -5,4 +5,4 @@ bert_ckpt: /home/spieterman/dev/big-brain-model/checkpoints/Transformer_382_v1/c
 task: ${task}
 num_logits: 3
 freeze_depth: all
-lr_classifier: 1e-3
+lr_classifier: 1e-4

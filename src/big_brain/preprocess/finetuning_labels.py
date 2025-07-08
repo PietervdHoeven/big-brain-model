@@ -184,7 +184,42 @@ print(final_df[final_df.isna().any(axis=1)].sort_values("patient"))
 # save the final DataFrame to a parquet file
 final_df.to_parquet("data/labels/labels.parquet", index=False)
 
-# print the unique values of the cdr, gender, and handedness columns
+# print the unique values of the cdr, gender, and handedness columns. Also print the number of unique values in each column.
 print("Unique CDR values:", final_df["cdr"].unique())
+print("CDR value counts:\n", final_df["cdr"].value_counts())
 print("Unique gender values:", final_df["gender"].unique())
+print("Gender value counts:\n", final_df["gender"].value_counts())
 print("Unique handedness values:", final_df["handedness"].unique())
+print("Handedness value counts:\n", final_df["handedness"].value_counts())
+
+
+"""
+        patient    session  cdr  gender handedness        age
+0  sub-OAS30001  ses-d0757  0.0  female      right  67.267053
+1  sub-OAS30001  ses-d2430  0.0  female      right  71.847477
+2  sub-OAS30001  ses-d3132  0.0  female      right  73.769449
+3  sub-OAS30001  ses-d4467  0.0  female      right  77.424479
+4  sub-OAS30002  ses-d1680  0.0    male      right  71.851689
+
+Unique CDR values: [0.  0.5 1.  2. ]
+CDR value counts:
+ cdr
+0.0    1365
+0.5     283
+1.0      84
+2.0       6
+
+Unique gender values: ['female' 'male']
+Gender value counts:
+ gender
+female    956
+male      782
+
+Unique handedness values: ['right' 'left' 'both']
+Handedness value counts:
+ handedness
+right    1581
+left      151
+both        6
+
+"""

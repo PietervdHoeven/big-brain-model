@@ -10,5 +10,5 @@ defaults:
   - model: multiclass_head
   - trainer: default
   - logger: tensorboard
-  - early_stopping: on_loss
-  - checkpoint: on_loss
+  - early_stopping: on_auroc
+  - checkpoint: on_auroc

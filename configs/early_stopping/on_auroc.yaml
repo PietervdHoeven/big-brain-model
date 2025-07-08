@@ -1,0 +1,9 @@
+# configs/early_stopping/on_auroc.yaml
+
+_target_: pytorch_lightning.callbacks.EarlyStopping
+
+monitor: val_auroc      # metric logged with self.log(...) in def validation_step()
+mode: max               # "min" for loss, "max" for accuracy
+patience: 15            # stop after 5 “no-improvement” epochs
+min_delta: 0.0005       # minimum change to qualify as an improvement
+verbose: true           # set true for console messages
