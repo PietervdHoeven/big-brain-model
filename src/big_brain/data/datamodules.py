@@ -268,6 +268,9 @@ class FinetunerDataModule(pl.LightningDataModule):
     def val_dataloader(self):
         return self._dl(self.val_dataset)
 
+    def test_dataloader(self):
+        return self._dl(self.val_dataset)  # For testing, we use the validation set as well.
+
 
 
 

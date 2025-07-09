@@ -12,6 +12,10 @@ from pytorch_lightning.loggers import TensorBoardLogger
 def main(cfg: DictConfig):
     # Print the configuration
     print(OmegaConf.to_yaml(cfg))
+    if cfg.test:
+        print("Running in test mode.")
+    else:
+        print("Running in training mode.")
 
     # set random seed for reproducibility
     seed_everything(cfg.seed, workers=True)
@@ -41,7 +45,8 @@ def main(cfg: DictConfig):
 
     # Test (optional)
     if cfg.test:
-        trainer.test(model=model, datamodule=datamodule)
+        ckpt_path = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + "/model.ckpt"
+        trainer.test(model=model, datamodule=datamodule, ckpt_path="best")
 
 if __name__ == "__main__":
     main()

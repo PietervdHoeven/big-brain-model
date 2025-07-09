@@ -1,14 +1,14 @@
 # configs/config.yaml
 
-seed: 42
-test: false
-task: age
+seed: 69
+test: true
+task: gender
 
 defaults:
   - _self_
   - datamodule: finetuner
-  - model: regression_head
+  - model: binary_head
   - trainer: default
   - logger: tensorboard
-  - early_stopping: on_mae
-  - checkpoint: on_mae
+  - early_stopping: on_auroc
+  - checkpoint: on_auroc

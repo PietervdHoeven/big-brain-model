@@ -18,8 +18,9 @@ class DWIBertFinetuner(pl.LightningModule):
             num_logits: int = 1,   # Number of classes for classification or 1 for regression
             # Training parameters
             freeze_depth: str | int = "all",  # "all" or an integer for the number of layers to freeze
-            lr_classifier: float = 1e-3,
-            lr_transformer: float = 1e-5,
+            dropout: float = 0.3,  # Dropout rate for the classifier head
+            lr_classifier: float = 1e-4,  # Learning rate for the classifier head
+            lr_transformer: float = 1e-5, # Learning rate for the transformer layers
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -41,6 +42,7 @@ class DWIBertFinetuner(pl.LightningModule):
                     p.requires_grad = True
         
         # Classifier head
+        self.dropout = nn.Dropout(p=dropout)  # Dropout layer for regularization
         self.classifier = nn.Linear(self.transformer.hparams.d_model, num_logits)
 
         # Metrics
@@ -62,7 +64,7 @@ class DWIBertFinetuner(pl.LightningModule):
                 self.class_names = ["male", "female"]
 
         elif task in ["handedness", "tri_cdr"]: # multiclass classification
-            self.loss_fn = nn.CrossEntropyLoss()    # expects logits, so we don't apply softmax here (handled within the loss function)
+            self.loss_fn = nn.CrossEntropyLoss(label_smoothing=0.1)    # expects logits, so we don't apply softmax here (handled within the loss function)
             self.metrics = nn.ModuleDict({
                 "accuracy" : Accuracy(task="multiclass", num_classes=3),
                 "f1"       : F1Score(task="multiclass",   num_classes=3, average="macro"),
@@ -103,8 +105,11 @@ class DWIBertFinetuner(pl.LightningModule):
         # Pass through the transformer encoder
         h = self.transformer.encoder(x, src_key_padding_mask=~attn_mask)
 
+        # dropout the output of the transformer
+        cls = self.dropout(h[:, 0, :])  # Shape [B, D], we only take the [CLS] token
+
         # Compute the logits for classification
-        logits = self.classifier(h[:, 0, :])  # Use the [CLS] token for classification
+        logits = self.classifier(cls)  # Use the [CLS] token for classification
 
         return logits   # Shape [B, num_classes]
 
@@ -174,10 +179,6 @@ class DWIBertFinetuner(pl.LightningModule):
             # Only log epoch-level at validation
             self.log(f"val_{name}", metric, prog_bar=True, on_step=False, on_epoch=True)
 
-        # Update the confusion matrix metric
-        if self.cm_metric is not None:
-            self.cm_metric.update(y_pred, y.long())
-
         return loss
     
 
@@ -205,14 +206,14 @@ class DWIBertFinetuner(pl.LightningModule):
 
         return loss
     
-    def on_epoch_end(self):
+    def on_test_epoch_end(self):
         """
         log the confusion matrix at the end of the validation epoch.
         """
         if self.cm_metric is not None:
             # Plot the confusion matrix
             fig, ax = self.cm_metric.plot(labels=self.class_names, add_text=True, cmap="Blues")
-            self.logger.experiment.add_figure("val_confusion_matrix", fig, self.current_epoch)
+            self.logger.experiment.add_figure(f"{self.task}_confusion_matrix", fig, self.current_epoch)
 
             # clean up
             plt.close(fig)
@@ -230,14 +231,6 @@ class DWIBertFinetuner(pl.LightningModule):
                 ax.set_title("Prediction Spread")
                 self.logger.experiment.add_figure("val_prediction_spread", fig, self.current_epoch)
                 plt.close(fig)
-
-
-    def on_test_epoch_end(self):
-        return self.on_epoch_end()
-
-
-    def on_validation_epoch_end(self):
-        return self.on_epoch_end()
     
 
     def configure_optimizers(self):
@@ -246,11 +239,15 @@ class DWIBertFinetuner(pl.LightningModule):
         Returns:
             torch.optim.Optimizer: The optimizer for the model.
         """
+        head_params = list(self.classifier.parameters())
+        transformer_params = [p for p in self.transformer.parameters() if p.requires_grad]
         # Use AdamW optimizer with weight decay
         optimizer = torch.optim.AdamW(
-            self.parameters(),
-            lr=self.hparams.lr_classifier,
-            weight_decay=1e-2
+            [
+                {"params": head_params, "lr": self.hparams.lr_classifier},
+                {"params": transformer_params, "lr": self.hparams.lr_transformer}
+            ],
+            weight_decay=5e-2
         )
 
         return optimizer
