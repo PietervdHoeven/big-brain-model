@@ -1,7 +1,8 @@
 import numpy as np
 import torch
-from torch.utils.data import Subset, WeightedRandomSampler
+from torch.utils.data import Subset, WeightedRandomSampler, Dataset
 from collections import defaultdict, Counter
+from sklearn.model_selection import StratifiedGroupKFold
 import torchio as tio
 from typing import List, Tuple, Callable
 
@@ -34,6 +35,57 @@ def create_train_val_split(
 
     return make_subset(dataset, train_idx), make_subset(dataset, val_idx)
 
+
+
+def create_group_stratified_split(
+        dataset,
+        group_key: str = "patient",
+        n_splits: int = 5, # yields 80% train / 10% val / 10% test
+        seed: int = 42
+) -> Tuple[Dataset, Dataset, Dataset]:
+    """
+    Create a group-stratified split of the dataset.
+    The split is done based on the `group_key` which can be
+    either "patient" or "session". The split is deterministic
+    and uses the `seed` for reproducibility.
+
+    Returns
+    -------
+    train_subset : torch.utils.data.Subset
+    val_subset   : torch.utils.data.Subset
+    test_subset  : torch.utils.data.Subset
+    """
+
+    # Get groups based on the group_key
+    if group_key == "patient":
+        groups = dataset.patients
+    elif group_key == "session":
+        groups = dataset.sessions
+    else:
+        raise ValueError("group_key must be either 'patient' or 'session'")
+    
+    # Ensure groups are numpy arrays
+    labels = np.asarray(dataset.labels)
+    groups = np.asarray(groups)
+
+    # Create stratified group k-fold splitter
+    skgf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+
+    # Split the dataset into train, val, and test sets
+    train_idx, rest_idx = next(skgf.split(np.zeros(len(groups)), labels, groups))
+
+    # Make a new StratifiedGroupKFold for the rest with 50 50 split
+    skgf = StratifiedGroupKFold(n_splits=2, shuffle=True, random_state=seed)
+
+    # split the rest into val and test
+    val_idx, test_idx = next(skgf.split(np.zeros(len(rest_idx)), labels[rest_idx], groups[rest_idx]))
+
+    return (
+        make_subset(dataset, train_idx),
+        make_subset(dataset, val_idx),
+        make_subset(dataset, test_idx)
+    )
+    
 
 def make_subset(dataset, idxs):
     sub = Subset(dataset, idxs.tolist())

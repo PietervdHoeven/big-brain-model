@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Subset, Dataset, WeightedRandomSampler
 import pytorch_lightning as pl
 
 from big_brain.data.datasets import AEVolumes, TFLatents, TFLabeledLatents
-from big_brain.data.utils   import create_train_val_split, make_ae_sampler, make_mdm_sampler, make_finetuner_sampler, collate_mdm, collate_finetuner
+from big_brain.data.utils   import create_train_val_split, make_ae_sampler, make_mdm_sampler, make_finetuner_sampler, collate_mdm, collate_finetuner, create_group_stratified_split
 
 import logging
 log = logging.getLogger(__name__)
@@ -202,18 +202,18 @@ class FinetunerDataModule(pl.LightningDataModule):
         self,
         data_dir: str,                           # path to the dir containing all cached and normalised latents .npz files
         batch_size: int = 16,                    # batch size for training / validation
-        val_split: float = 0.10,                 # fraction of the dataset to use for validation
+        n_splits: int = 5,                       # fraction of the dataset to use for validation
         num_workers: int = 12,                   # number of workers for DataLoader (Determine for the slurm script)
         pin_memory: bool = True,                 # pin_memory=True keep batch in (pinned) RAM so that when you do batch.to("cuda"), this usually speeds up transfers. If you’re only on CPU, it has no effect.
         use_sampler: bool = True,                # whether to use WeightedRandomSampler for training
         sample_fraction: float = 0.0,            # 0.05 → keep 5 % of files | 0.0 → keep all files (default, no sampling)
         task: str = "bin_cdr",                   # task to perform: bin_cdr, tri_cdr, ord_c
-        seed: int = 42                        # seed for reproducibility
+        seed: int = 42                           # seed for reproducibility
     ):
         super().__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
-        self.val_split = val_split
+        self.n_splits = n_splits
         self.num_workers = num_workers
         self.pin_memory = pin_memory
         self.use_sampler = use_sampler
@@ -240,9 +240,10 @@ class FinetunerDataModule(pl.LightningDataModule):
                     seed=self.seed
                 )
 
-            self.train_dataset, self.val_dataset = create_train_val_split(
+            self.train_dataset, self.val_dataset, self.test_dataset = create_group_stratified_split(
                 full_dataset,
-                val_fraction=self.val_split,
+                group_key="patient",  # or "session"
+                n_splits=self.n_splits,           # 5-fold cross-validation
                 seed=self.seed
             )
 
@@ -269,7 +270,7 @@ class FinetunerDataModule(pl.LightningDataModule):
         return self._dl(self.val_dataset)
 
     def test_dataloader(self):
-        return self._dl(self.val_dataset)  # For testing, we use the validation set as well.
+        return self._dl(self.test_dataset)
 
 
 

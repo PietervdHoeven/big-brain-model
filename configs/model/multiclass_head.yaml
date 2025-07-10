@@ -4,5 +4,7 @@ _target_: big_brain.models.finetuner.DWIBertFinetuner
 bert_ckpt: /home/spieterman/dev/big-brain-model/checkpoints/Transformer_382_v1/checkpoint.pth
 task: ${task}
 num_logits: 3
-freeze_depth: 2
+freeze_depth: 6
 lr_classifier: 1e-4
+lr_transformer: 1e-5
+dropout: 0.3

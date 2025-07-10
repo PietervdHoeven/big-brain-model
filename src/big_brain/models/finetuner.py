@@ -43,7 +43,14 @@ class DWIBertFinetuner(pl.LightningModule):
         
         # Classifier head
         self.dropout = nn.Dropout(p=dropout)  # Dropout layer for regularization
-        self.classifier = nn.Linear(self.transformer.hparams.d_model, num_logits)
+        hidden = max(512, 2 * self.transformer.hparams.d_model)   # 768 when d_model=384
+        self.classifier = nn.Sequential(
+            nn.LayerNorm(self.transformer.hparams.d_model),
+            nn.Linear(self.transformer.hparams.d_model, hidden),
+            nn.GELU(),
+            nn.Dropout(p=self.hparams.dropout),
+            nn.Linear(hidden, self.hparams.num_logits)
+)
 
         # Metrics
         self.task = task
@@ -206,6 +213,7 @@ class DWIBertFinetuner(pl.LightningModule):
 
         return loss
     
+
     def on_test_epoch_end(self):
         """
         log the confusion matrix at the end of the validation epoch.
@@ -231,7 +239,7 @@ class DWIBertFinetuner(pl.LightningModule):
                 ax.set_title("Prediction Spread")
                 self.logger.experiment.add_figure("val_prediction_spread", fig, self.current_epoch)
                 plt.close(fig)
-    
+
 
     def configure_optimizers(self):
         """
