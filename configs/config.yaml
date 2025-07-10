@@ -2,12 +2,12 @@
 
 seed: 69
 test: true
-task: gender
+task: handedness
 
 defaults:
   - _self_
   - datamodule: finetuner
-  - model: binary_head
+  - model: multiclass_head
   - trainer: default
   - logger: tensorboard
   - early_stopping: on_auroc

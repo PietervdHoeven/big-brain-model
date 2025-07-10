@@ -3,7 +3,7 @@
 _target_: big_brain.data.datamodules.FinetunerDataModule
 data_dir: /home/spieterman/dev/big-brain-model/data/transformer
 batch_size: 16
-val_split: 0.20
+n_splits: 5
 num_workers: 12
 task: ${task}
 pin_memory: true

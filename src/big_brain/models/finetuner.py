@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
+import hydra
 from torchmetrics import Accuracy, F1Score, Precision, Recall, AUROC, MeanAbsoluteError, MeanSquaredError, ConfusionMatrix
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -222,6 +223,10 @@ class DWIBertFinetuner(pl.LightningModule):
             # Plot the confusion matrix
             fig, ax = self.cm_metric.plot(labels=self.class_names, add_text=True, cmap="Blues")
             self.logger.experiment.add_figure(f"{self.task}_confusion_matrix", fig, self.current_epoch)
+            # save the confusion matrix to a file in the output directory
+            fig.tight_layout()
+            fig_file = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir + f"/confusion_matrix_{self.task}.png"
+            fig.savefig(fig_file)
 
             # clean up
             plt.close(fig)

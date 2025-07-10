@@ -96,6 +96,8 @@ class TFLabeledLatents(TFLatents):
     ):
         super().__init__(data_root)                     # Initialize the base class. So we get the files, patients, sessions, and lengths.
         self.labels_df = pd.read_parquet(labels_path)   # Load the labels DataFrame from a parquet file.
+        self.task = task                                 # The task to perform, which determines how labels are processed.
+        self.mapper = MAPPERS[task]                     # A mapper function or dict to transform labels if needed
 
         # get the right column for the task
         if task in ["bin_cdr", "tri_cdr", "ord_cdr"]:
@@ -107,9 +109,10 @@ class TFLabeledLatents(TFLatents):
         self.labels = []                                # List to store labels for each (patient, session) pair.
         for p, s in zip(self.patients, self.sessions):
             label = self.labels_df.loc[(self.labels_df['patient'] == p) & (self.labels_df['session'] == s), column].iloc[0]
+            if self.mapper is not None:
+                label = self.mapper[label]
             self.labels.append(label)                   # We build a parallel list of labels for each patient and session.
         
-        self.mapper = MAPPERS[task]                     # A mapper function or dict to transform labels if needed
     
     def __getitem__(self, idx):
         # Get the latent vector and gradient info from the base class
@@ -118,10 +121,9 @@ class TFLabeledLatents(TFLatents):
         # Get the label for the current index
         label = self.labels[idx]
         if isinstance(label, str): label = label.strip().lower()  # Normalize string labels
-        if self.mapper is not None:
-            label = self.mapper[label]  # map it into torch tensor format
-            y = torch.tensor(label, dtype=torch.long)  # Convert to tensor (typically long for classification)
+        if self.task in "age":
+            y = torch.tensor(label, dtype=torch.float32)  # Convert to tensor (typically float for regression)
         else:
-            y = torch.tensor(label, dtype=torch.float32)  # Default to float if no mapping is provided  (this is useful for regression tasks)
+            y = torch.tensor(label, dtype=torch.long)  # Convert to tensor (typically long for classification)
         
         return z, g, length, y

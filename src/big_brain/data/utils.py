@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch.utils.data import Subset, WeightedRandomSampler, Dataset
 from collections import defaultdict, Counter
-from sklearn.model_selection import StratifiedGroupKFold
+from sklearn.model_selection import StratifiedGroupKFold, GroupShuffleSplit
 import torchio as tio
 from typing import List, Tuple, Callable
 
@@ -68,17 +68,29 @@ def create_group_stratified_split(
     labels = np.asarray(dataset.labels)
     groups = np.asarray(groups)
 
-    # Create stratified group k-fold splitter
-    skgf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    # Check for ints or floats in labels (itns = classification, floats = regression)
+    is_classification = np.issubdtype(labels.dtype, np.integer)
 
-    # Split the dataset into train, val, and test sets
-    train_idx, rest_idx = next(skgf.split(np.zeros(len(groups)), labels, groups))
+    if is_classification:
+        # Create stratified group k-fold splitter
+        skgf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        # Split the dataset into train and rest sets
+        train_idx, rest_idx = next(skgf.split(np.zeros(len(groups)), labels, groups))
+        # Make a new StratifiedGroupKFold for the rest with 50 50 split
+        skgf = StratifiedGroupKFold(n_splits=2, shuffle=True, random_state=seed)
+        # split the rest into val and test
+        val_idx, test_idx = next(skgf.split(np.zeros(len(rest_idx)), labels[rest_idx], groups[rest_idx]))
 
-    # Make a new StratifiedGroupKFold for the rest with 50 50 split
-    skgf = StratifiedGroupKFold(n_splits=2, shuffle=True, random_state=seed)
+    else:
+        # create group shuffle split for regression
+        gss = GroupShuffleSplit(n_splits=n_splits, random_state=seed)
+        # Split the dataset into train rest sets
+        train_idx, rest_idx = next(gss.split(np.zeros(len(groups)), groups=groups))
+        # Make a new GroupShuffleSplit for the rest with 50 50 split
+        gss = GroupShuffleSplit(n_splits=2, random_state=seed)
+        # split the rest into val and test
+        val_idx, test_idx = next(gss.split(np.zeros(len(rest_idx)), groups=groups[rest_idx]))
 
-    # split the rest into val and test
-    val_idx, test_idx = next(skgf.split(np.zeros(len(rest_idx)), labels[rest_idx], groups[rest_idx]))
 
     return (
         make_subset(dataset, train_idx),

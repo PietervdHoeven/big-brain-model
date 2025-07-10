@@ -7,3 +7,4 @@ num_logits: 1
 freeze_depth: 3
 lr_classifier: 1e-4
 lr_transformer: 1e-5
+dropout: 0.3
