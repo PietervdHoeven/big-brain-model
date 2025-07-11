@@ -170,7 +170,7 @@ def process_session(dwi_path: Path):
     s_id = base.name.split("_")[1]  # e.g. "ses-01"
 
     # 3) Prepare the output folder for this session
-    #    e.g. cache/sub-0001_ses-01/
+    #    e.g. cache/sub-0001/ses-01/
     out_dir = CACHE / p_id / s_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
