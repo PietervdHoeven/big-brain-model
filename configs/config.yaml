@@ -6,9 +6,9 @@ task: handedness
 
 defaults:
   - _self_
-  - datamodule: finetuner
-  - model: multiclass_head
+  - datamodule: autoencoder
+  - model: autoencoder
   - trainer: default
   - logger: tensorboard
-  - early_stopping: on_auroc
-  - checkpoint: on_auroc
+  - early_stopping: on_ssim
+  - checkpoint: on_ssim

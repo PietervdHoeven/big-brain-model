@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from torchmetrics import StructuralSimilarityIndexMeasure
+from torchmetrics.image import StructuralSimilarityIndexMeasure
 from torch.optim.lr_scheduler import LinearLR, CosineAnnealingLR, SequentialLR
 from big_brain.models.encoders import Encoder
 from big_brain.models.decoders import Decoder
@@ -12,6 +12,8 @@ class AutoEncoder(pl.LightningModule):
             # Model parameters
             norm: str = "group",
             activation: str = "gelu",
+            base_feats: int = 16,
+            mults: tuple = (1, 2, 4, 8),
             # Optimizer parameters
             lr: float = 0.001,
             weight_decay: float = 1e-05
@@ -24,8 +26,8 @@ class AutoEncoder(pl.LightningModule):
         self.weight_decay = weight_decay
 
         # Model architecture
-        self.encoder = Encoder(norm=norm, activation=activation)
-        self.decoder = Decoder(norm=norm, activation=activation)
+        self.encoder = Encoder(base_feats=base_feats, mults=mults, norm=norm, activation=activation)
+        self.decoder = Decoder(base_feats=base_feats, mults=mults, norm=norm, activation=activation)
 
         # Metrics
         self.ssim = StructuralSimilarityIndexMeasure(data_range=1.0)
@@ -94,6 +96,7 @@ class AutoEncoder(pl.LightningModule):
         # Log the SSIM metric for testing
         self.log('test_ssim', ssim, on_step=False, on_epoch=True,
                  prog_bar=True, logger=True)
+    
         # Return the loss for testing
         return loss
     
@@ -144,6 +147,11 @@ class AutoEncoder(pl.LightningModule):
             }
         }
 
+# ae = AutoEncoder(
+#     base_feats=32,
+#     mults=(1, 2, 4, 8),
+#     norm="group",
+#     activation="gelu",)
 # x = torch.randn(16, 1, 96, 112, 96)  # Example input tensor
 # output = ae(x)
 # print(f"Output shape: {output.shape}")  # Should be [B, 1, 96, 112, 96]

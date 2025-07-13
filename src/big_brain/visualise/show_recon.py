@@ -10,7 +10,7 @@ import logging
 log = logging.getLogger(__name__)
 
 def load_cfg(run_dir: Path):
-    cfg_path = run_dir / "config.yaml"
+    cfg_path = run_dir / ".hydra" / "config.yaml"
     return OmegaConf.load(cfg_path)
 
 def sample_slices(vol: torch.Tensor):
@@ -28,12 +28,18 @@ def main(run_dir: Path, n_show: int = 4):
     datamodule.setup()                     # use val set
     val_loader = datamodule.val_dataloader()
 
-    model = hydra.utils.instantiate(cfg.model)
-    ckpt  = torch.load(run_dir / "checkpoint.pth",
-                       map_location="cpu")
-    model.load_state_dict(ckpt["model"])
-    model.eval()
+    ckpt_path = run_dir / "model.ckpt"
 
+    # load_from_checkpoint is a *classmethod*, so call it on the class,
+    # NOT on an already-instantiated object.
+    ModelClass = hydra.utils.get_class(cfg.model._target_)   # ← the LightningModule class
+    model = ModelClass.load_from_checkpoint(
+        str(ckpt_path),                # accepts str | Path
+        map_location="cpu",            # keep on CPU while loading
+        **cfg.model                    # forwards any extra hparams in cfg
+    )
+
+    model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 

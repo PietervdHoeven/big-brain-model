@@ -1,9 +1,9 @@
 # configs/model/autoencoder.yaml
 
-_target_: big_brain.models.autoencoder.AutoEncoder
+_target_: big_brain.models.autoencoders.AutoEncoder
 norm: group
 activation: gelu
+base_feats: 32
 lr: 0.001
 weight_decay: 1e-05
-norm: group
 
